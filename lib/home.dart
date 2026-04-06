@@ -26,15 +26,13 @@ class HomePage extends StatelessWidget {
             child: Row(
               children: [
 
-                /// QR (smaller)
+                /// QR
                 Expanded(
                   flex: 2,
                   child: Column(
                     children: [
                       IconButton(
-                        onPressed: () {
-                          // TODO: Show QR
-                        },
+                        onPressed: () {},
                         icon: const Icon(Icons.qr_code, size: 40),
                       ),
                       const Text("My QR"),
@@ -66,11 +64,9 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
 
-                /// 👤 User Icon (right side)
+                /// Profile Icon
                 IconButton(
-                  onPressed: () {
-                    // TODO: Profile
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.person, size: 30),
                 ),
               ],
@@ -79,13 +75,12 @@ class HomePage extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          /// 🔹 Category Buttons (4 circles)
+          /// 🔹 Categories
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-
                 buildCategory(Icons.medical_services, "Medicine"),
                 buildCategory(Icons.health_and_safety, "Vitamin"),
                 buildCategory(Icons.child_care, "Baby Care"),
@@ -113,15 +108,13 @@ class HomePage extends StatelessWidget {
             ),
           ),
 
-          /// 🔹 E-Consultation Button
+          /// 🔹 E-Consultation
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Consultation
-                },
+                onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                 ),
@@ -132,40 +125,78 @@ class HomePage extends StatelessWidget {
 
           const Spacer(),
 
-          /// 🔻 Bottom Navigation (Custom)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
+          /// 🔻 Bottom Navigation (FINAL FIXED)
+          Stack(
+            alignment: Alignment.bottomCenter,
+            clipBehavior: Clip.none,
+            children: [
 
-                buildNavItem(Icons.home, "Home", true),
-                buildNavItem(Icons.medical_services, "Medicine", false),
-
-                /// 🔴 Emergency Button
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+              /// 🟢 Footer Bar
+              Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: const Border(
+                    top: BorderSide(color: Colors.grey, width: 0.5),
                   ),
-                  padding: const EdgeInsets.all(12),
-                  child: const Icon(Icons.warning, color: Colors.white),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
+                child: Row(
+                  children: [
 
-                buildNavItem(Icons.receipt, "Orders", false),
-                buildNavItem(Icons.person, "Profile", false),
-              ],
-            ),
+                    buildNavItem(Icons.home, "Home", true),
+                    buildNavItem(Icons.medical_services, "Medicine", false),
+
+                    const SizedBox(width: 70),
+
+                    buildNavItem(Icons.receipt, "Orders", false),
+                    buildNavItem(Icons.person, "Profile", false),
+                  ],
+                ),
+              ),
+
+              /// 🔴 Floating Emergency Button
+              Positioned(
+                top: -30,
+                child: GestureDetector(
+                  onTap: () {
+                    // TODO: Emergency action
+                  },
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.4),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.warning,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  /// 🔘 Category Builder
+  /// 🔘 Category Button
   Widget buildCategory(IconData icon, String label) {
     return Column(
       children: [
@@ -182,21 +213,27 @@ class HomePage extends StatelessWidget {
 
   /// 🔘 Bottom Nav Item
   Widget buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? Colors.green : Colors.grey,
-        ),
-        Text(
-          label,
-          style: TextStyle(
+    return Expanded(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 26,
             color: isActive ? Colors.green : Colors.grey,
-            fontSize: 12,
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight:
+              isActive ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? Colors.green : Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
