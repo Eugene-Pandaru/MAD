@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:mad/myqr.dart';
+import 'package:mad/vouchers.dart';
+import 'package:mad/points.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
+  Widget buildDivider() {
+    return Container(height: 40, width: 1, color: Colors.grey.shade300);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,82 +17,137 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.green,
         centerTitle: true,
-        title: Image.asset(
-          'assets/logo.png',
-          height: 40,
-        ),
+        title: Image.asset('assets/logo.png', height: 40),
       ),
 
       /// 🟢 Body
       body: Column(
         children: [
-
-          /// 🔹 Top Info Row
+          /// 🔹 Top Info Card
           Padding(
             padding: const EdgeInsets.all(15),
-            child: Row(
-              children: [
-
-                /// QR (smaller)
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          // TODO: Show QR
-                        },
-                        icon: const Icon(Icons.qr_code, size: 40),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+              ),
+              child: Row(
+                children: [
+                  /// 🔳 MyQR (WITH RIGHT BORDER)
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          right: BorderSide(color: Colors.grey.shade500),
+                        ),
                       ),
-                      const Text("My QR"),
-                    ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MyQRPage(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.qr_code, size: 40),
+                          ),
+                          const Text("My QR"),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
 
-                /// Voucher
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    children: const [
-                      Icon(Icons.card_giftcard, size: 30),
-                      SizedBox(height: 5),
-                      Text("0 Vouchers"),
-                    ],
+                  /// 🔹 Right Side (3 equal items)
+                  Expanded(
+                    flex: 6,
+                    child: Row(
+                      children: [
+                        /// Voucher
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VouchersPage(),
+                                ),
+                              );
+                            },
+
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.card_giftcard, size: 30),
+                                SizedBox(height: 5),
+                                Text("0 Vouchers"),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        /// Points
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PointsPage(),
+                                ),
+                              );
+                            },
+
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.stars, size: 30),
+                                SizedBox(height: 5),
+                                Text("0 pts"),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        /// Profile
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              // go to profile page
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.person, size: 30),
+                                SizedBox(height: 5),
+                                Text("Profile"),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-
-                /// Points
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    children: const [
-                      Icon(Icons.stars, size: 30),
-                      SizedBox(height: 5),
-                      Text("0 pts"),
-                    ],
-                  ),
-                ),
-
-                /// 👤 User Icon (right side)
-                IconButton(
-                  onPressed: () {
-                    // TODO: Profile
-                  },
-                  icon: const Icon(Icons.person, size: 30),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          /// 🔹 Category Buttons (4 circles)
+          /// 🔹 Categories
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-
                 buildCategory(Icons.medical_services, "Medicine"),
                 buildCategory(Icons.health_and_safety, "Vitamin"),
                 buildCategory(Icons.child_care, "Baby Care"),
@@ -113,18 +175,14 @@ class HomePage extends StatelessWidget {
             ),
           ),
 
-          /// 🔹 E-Consultation Button
+          /// 🔹 E-Consultation
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Consultation
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 child: const Text("E-Consultation"),
               ),
             ),
@@ -132,40 +190,71 @@ class HomePage extends StatelessWidget {
 
           const Spacer(),
 
-          /// 🔻 Bottom Navigation (Custom)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-
-                buildNavItem(Icons.home, "Home", true),
-                buildNavItem(Icons.medical_services, "Medicine", false),
-
-                /// 🔴 Emergency Button
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+          /// 🔻 Bottom Navigation (FINAL FIXED)
+          Stack(
+            alignment: Alignment.bottomCenter,
+            clipBehavior: Clip.none,
+            children: [
+              /// 🟢 Footer Bar
+              Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: const Border(
+                    top: BorderSide(color: Colors.grey, width: 0.5),
                   ),
-                  padding: const EdgeInsets.all(12),
-                  child: const Icon(Icons.warning, color: Colors.white),
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
                 ),
+                child: Row(
+                  children: [
+                    buildNavItem(Icons.home, "Home", true),
+                    buildNavItem(Icons.medical_services, "Medicine", false),
 
-                buildNavItem(Icons.receipt, "Orders", false),
-                buildNavItem(Icons.person, "Profile", false),
-              ],
-            ),
+                    const SizedBox(width: 70),
+
+                    buildNavItem(Icons.receipt, "Orders", false),
+                    buildNavItem(Icons.person, "Profile", false),
+                  ],
+                ),
+              ),
+
+              /// 🔴 Floating Emergency Button
+              Positioned(
+                top: -30,
+                child: GestureDetector(
+                  onTap: () {
+                    // TODO: Emergency action
+                  },
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.4),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.warning,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  /// 🔘 Category Builder
+  /// 🔘 Category Button
   Widget buildCategory(IconData icon, String label) {
     return Column(
       children: [
@@ -182,21 +271,22 @@ class HomePage extends StatelessWidget {
 
   /// 🔘 Bottom Nav Item
   Widget buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? Colors.green : Colors.grey,
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.green : Colors.grey,
-            fontSize: 12,
+    return Expanded(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 26, color: isActive ? Colors.green : Colors.grey),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? Colors.green : Colors.grey,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
