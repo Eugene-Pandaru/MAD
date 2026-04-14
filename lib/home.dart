@@ -218,29 +218,29 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              /// 🔴 Floating Emergency Button
+              ///  Floating ADDDDDDDDD Button
               Positioned(
                 top: -30,
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Emergency action
+                    // TODO: Add action
                   },
                   child: Container(
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.green,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
+                          color: Colors.lightBlue.withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: const Icon(
-                      Icons.warning,
+                      Icons.add,
                       color: Colors.white,
                       size: 32,
                     ),
