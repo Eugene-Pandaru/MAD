@@ -51,8 +51,7 @@ class PointsPage extends StatelessWidget {
             /// 📊 HOW TO EARN
             sectionTitle("How to Earn Points"),
             buildInfoTile(Icons.shopping_cart, "Buy Medicine", "+1 pt per RM1"),
-            buildInfoTile(Icons.local_shipping, "Use Delivery", "+5 pts"),
-            buildInfoTile(Icons.reviews, "Write Review", "+10 pts"),
+            buildInfoTile(Icons.reviews, "Write Review", "+2 pts"),
 
             const SizedBox(height: 25),
 
