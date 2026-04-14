@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mad/myqr.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
+import 'orderhistory.dart';
+
+import 'productlist.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -13,6 +16,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       /// 🟢 AppBar with Logo
       appBar: AppBar(
         backgroundColor: Colors.green,
@@ -23,6 +27,7 @@ class HomePage extends StatelessWidget {
       /// 🟢 Body
       body: Column(
         children: [
+
           /// 🔹 Top Info Card
           Padding(
             padding: const EdgeInsets.all(15),
@@ -36,6 +41,7 @@ class HomePage extends StatelessWidget {
               ),
               child: Row(
                 children: [
+
                   /// 🔳 MyQR (WITH RIGHT BORDER)
                   Expanded(
                     flex: 2,
@@ -70,6 +76,7 @@ class HomePage extends StatelessWidget {
                     flex: 6,
                     child: Row(
                       children: [
+
                         /// Voucher
                         Expanded(
                           child: InkWell(
@@ -148,9 +155,14 @@ class HomePage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                buildCategory(Icons.medical_services, "Medicine"),
-                buildCategory(Icons.health_and_safety, "Vitamin"),
-                buildCategory(Icons.child_care, "Baby Care"),
+                InkWell(
+                  onTap: () =>
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => const ProductListPage())),
+                  child: buildCategory(Icons.medical_services, "Product"),
+                ),
+                buildCategory(Icons.health_and_safety, "Not"),
+                buildCategory(Icons.child_care, "Sure"),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
             ),
@@ -195,6 +207,7 @@ class HomePage extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             clipBehavior: Clip.none,
             children: [
+
               /// 🟢 Footer Bar
               Container(
                 height: 70,
@@ -208,11 +221,22 @@ class HomePage extends StatelessWidget {
                 child: Row(
                   children: [
                     buildNavItem(Icons.home, "Home", true),
-                    buildNavItem(Icons.medical_services, "Medicine", false),
+                    buildNavItem(Icons.medical_services, "Medicine", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductListPage()),
+                      );
+                    }),
 
                     const SizedBox(width: 70),
 
-                    buildNavItem(Icons.receipt, "Orders", false),
+                    buildNavItem(Icons.receipt, "Orders", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (
+                            context) => const OrderHistoryPage()),
+                      );
+                    }),
                     buildNavItem(Icons.person, "Profile", false),
                   ],
                 ),
@@ -270,22 +294,26 @@ class HomePage extends StatelessWidget {
   }
 
   /// 🔘 Bottom Nav Item
-  Widget buildNavItem(IconData icon, String label, bool isActive) {
+  Widget buildNavItem(IconData icon, String label, bool isActive,
+      {VoidCallback? onTap}) {
     return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 26, color: isActive ? Colors.green : Colors.grey),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              color: isActive ? Colors.green : Colors.grey,
+      child: InkWell( // We wrap it in InkWell to make it clickable
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 26, color: isActive ? Colors.green : Colors.grey),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive ? Colors.green : Colors.grey,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
