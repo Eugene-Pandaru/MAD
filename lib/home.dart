@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mad/myqr.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
+import 'package:mad/userprofile.dart';
 import 'orderhistory.dart';
 
 import 'productlist.dart';
@@ -94,7 +95,7 @@ class HomePage extends StatelessWidget {
                               children: const [
                                 Icon(Icons.card_giftcard, size: 30),
                                 SizedBox(height: 5),
-                                Text("0 Vouchers"),
+                                Text("5 Vouchers"),
                               ],
                             ),
                           ),
@@ -117,7 +118,7 @@ class HomePage extends StatelessWidget {
                               children: const [
                                 Icon(Icons.stars, size: 30),
                                 SizedBox(height: 5),
-                                Text("0 pts"),
+                                Text("120 pts"),
                               ],
                             ),
                           ),
@@ -127,7 +128,12 @@ class HomePage extends StatelessWidget {
                         Expanded(
                           child: InkWell(
                             onTap: () {
-                              // go to profile page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const UserProfilePage(),
+                                ),
+                              );
                             },
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -161,8 +167,8 @@ class HomePage extends StatelessWidget {
                           builder: (context) => const ProductListPage())),
                   child: buildCategory(Icons.medical_services, "Product"),
                 ),
-                buildCategory(Icons.health_and_safety, "Not"),
-                buildCategory(Icons.child_care, "Sure"),
+                buildCategory(Icons.health_and_safety, "Location"),
+                buildCategory(Icons.child_care, "E-Consult"),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
             ),
@@ -237,34 +243,39 @@ class HomePage extends StatelessWidget {
                             context) => const OrderHistoryPage()),
                       );
                     }),
-                    buildNavItem(Icons.person, "Profile", false),
+                    buildNavItem(Icons.person, "Profile", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UserProfilePage()),
+                      );
+                    }),
                   ],
                 ),
               ),
 
-              /// 🔴 Floating Emergency Button
+              ///  Floating ADDDDDDDDD Button
               Positioned(
                 top: -30,
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Emergency action
+                    // TODO: Add action
                   },
                   child: Container(
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.green,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
+                          color: Colors.lightBlue.withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: const Icon(
-                      Icons.warning,
+                      Icons.add,
                       color: Colors.white,
                       size: 32,
                     ),
