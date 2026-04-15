@@ -9,7 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  supabase_flutter: ^2.0.0 # Add this line
+  supabase_flutter: ^2.0.0
+  flutter_stripe: ^10.1.1 # Added Stripe
+  http: ^1.1.0 # For backend calls
 
 dev_dependencies:
   flutter_test:
@@ -21,4 +23,3 @@ flutter:
   assets:
     - assets/logo.png
     - assets/myqr.jpeg
-
