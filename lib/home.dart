@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:mad/myqr.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
+import 'package:mad/userprofile.dart';
+import 'orderhistory.dart';
+
+import 'productlist.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -13,6 +17,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       /// 🟢 AppBar with Logo
       appBar: AppBar(
         backgroundColor: Colors.green,
@@ -23,6 +28,7 @@ class HomePage extends StatelessWidget {
       /// 🟢 Body
       body: Column(
         children: [
+
           /// 🔹 Top Info Card
           Padding(
             padding: const EdgeInsets.all(15),
@@ -36,6 +42,7 @@ class HomePage extends StatelessWidget {
               ),
               child: Row(
                 children: [
+
                   /// 🔳 MyQR (WITH RIGHT BORDER)
                   Expanded(
                     flex: 2,
@@ -70,6 +77,7 @@ class HomePage extends StatelessWidget {
                     flex: 6,
                     child: Row(
                       children: [
+
                         /// Voucher
                         Expanded(
                           child: InkWell(
@@ -87,7 +95,7 @@ class HomePage extends StatelessWidget {
                               children: const [
                                 Icon(Icons.card_giftcard, size: 30),
                                 SizedBox(height: 5),
-                                Text("0 Vouchers"),
+                                Text("5 Vouchers"),
                               ],
                             ),
                           ),
@@ -110,7 +118,7 @@ class HomePage extends StatelessWidget {
                               children: const [
                                 Icon(Icons.stars, size: 30),
                                 SizedBox(height: 5),
-                                Text("0 pts"),
+                                Text("120 pts"),
                               ],
                             ),
                           ),
@@ -120,7 +128,12 @@ class HomePage extends StatelessWidget {
                         Expanded(
                           child: InkWell(
                             onTap: () {
-                              // go to profile page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const UserProfilePage(),
+                                ),
+                              );
                             },
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -148,9 +161,14 @@ class HomePage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                buildCategory(Icons.medical_services, "Medicine"),
-                buildCategory(Icons.health_and_safety, "Vitamin"),
-                buildCategory(Icons.child_care, "Baby Care"),
+                InkWell(
+                  onTap: () =>
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => const ProductListPage())),
+                  child: buildCategory(Icons.medical_services, "Product"),
+                ),
+                buildCategory(Icons.health_and_safety, "Location"),
+                buildCategory(Icons.child_care, "E-Consult"),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
             ),
@@ -195,6 +213,7 @@ class HomePage extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             clipBehavior: Clip.none,
             children: [
+
               /// 🟢 Footer Bar
               Container(
                 height: 70,
@@ -208,39 +227,55 @@ class HomePage extends StatelessWidget {
                 child: Row(
                   children: [
                     buildNavItem(Icons.home, "Home", true),
-                    buildNavItem(Icons.medical_services, "Medicine", false),
+                    buildNavItem(Icons.medical_services, "Medicine", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProductListPage()),
+                      );
+                    }),
 
                     const SizedBox(width: 70),
 
-                    buildNavItem(Icons.receipt, "Orders", false),
-                    buildNavItem(Icons.person, "Profile", false),
+                    buildNavItem(Icons.receipt, "Orders", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (
+                            context) => const OrderHistoryPage()),
+                      );
+                    }),
+                    buildNavItem(Icons.person, "Profile", false, onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UserProfilePage()),
+                      );
+                    }),
                   ],
                 ),
               ),
 
-              /// 🔴 Floating Emergency Button
+              ///  Floating ADDDDDDDDD Button
               Positioned(
                 top: -30,
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Emergency action
+                    // TODO: Add action
                   },
                   child: Container(
                     width: 70,
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.green,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
+                          color: Colors.lightBlue.withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: const Icon(
-                      Icons.warning,
+                      Icons.add,
                       color: Colors.white,
                       size: 32,
                     ),
@@ -270,22 +305,26 @@ class HomePage extends StatelessWidget {
   }
 
   /// 🔘 Bottom Nav Item
-  Widget buildNavItem(IconData icon, String label, bool isActive) {
+  Widget buildNavItem(IconData icon, String label, bool isActive,
+      {VoidCallback? onTap}) {
     return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 26, color: isActive ? Colors.green : Colors.grey),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              color: isActive ? Colors.green : Colors.grey,
+      child: InkWell( // We wrap it in InkWell to make it clickable
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 26, color: isActive ? Colors.green : Colors.grey),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive ? Colors.green : Colors.grey,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
