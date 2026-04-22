@@ -9,6 +9,15 @@ class OrderDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<dynamic> items = order['items'] ?? [];
 
+    // 1. Fetch values from the order map
+    double deliveryFee = double.tryParse(order['delivery_fee']?.toString() ?? '0') ?? 0.0;
+    double grandTotal = double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0.0;
+
+    // 2. Calculate subtotal from the items list
+    double calculatedSubtotal = items.fold(0.0, (sum, item) {
+      return sum + ((item['price'] ?? 0) * (item['quantity'] ?? 1));
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text("Order Summary"), backgroundColor: Colors.green),
       body: Column(
@@ -20,28 +29,46 @@ class OrderDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // --- 1. Order ID & Date ---
-                  Text("ORDER #${order['id'].toString().substring(0, 8).toUpperCase()}",
+                  Text("ORDER #${(order['id'] ?? 'N/A').toString().substring(0, 8).toUpperCase()}",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  Text("Date: ${order['created_at'].toString().split('T')[0]}",
+                  Text("Date: ${order['created_at']?.toString().split('T')[0] ?? 'N/A'}",
                       style: const TextStyle(color: Colors.grey)),
 
                   const SizedBox(height: 20),
 
-                  // --- 2. Dual Status Section (Delivery & Payment) ---
+                  const Text("Shipping To:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
+                  const SizedBox(height: 5),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.location_on, size: 18, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          order['delivery_address'] ?? "Address not provided",
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Divider(height: 40),
+
+                  // --- 2. Dual Status Section ---
                   Row(
                     children: [
-                      // Delivery Status Chip
                       _buildStatusChip(
                         label: order['delivery_status'] ?? "PENDING",
                         color: Colors.blue,
                         icon: Icons.local_shipping,
                       ),
                       const SizedBox(width: 10),
-                      // Payment Method Chip
                       _buildStatusChip(
-                        label: order['payment_method'] ?? "Not Paid",
+                        label: order['payment_method'] ?? "Paid",
                         color: Colors.orange,
-                        icon: order['payment_method'] == "Card" ? Icons.credit_card : Icons.account_balance,
+                        icon: (order['payment_method']?.toString().contains("Card") ?? false)
+                            ? Icons.credit_card
+                            : Icons.account_balance,
                       ),
                     ],
                   ),
@@ -51,6 +78,7 @@ class OrderDetailsPage extends StatelessWidget {
                   // --- 3. Items List ---
                   const Text("Items Purchased", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
+
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -58,24 +86,41 @@ class OrderDetailsPage extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final item = items[index];
                       return ListTile(
-                        leading: Image.network(item['image_url'] ?? '', width: 40, errorBuilder: (c, e, s) => const Icon(Icons.medication)),
-                        title: Text(item['name']),
-                        subtitle: Text("Quantity: ${item['quantity']}"),
-                        trailing: Text("RM ${(item['price'] * item['quantity']).toStringAsFixed(2)}"),
+                        leading: SizedBox(
+                          width: 40,
+                          child: item['image_url'] != null && item['image_url'].toString().isNotEmpty
+                              ? Image.network(item['image_url'], fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.medication))
+                              : const Icon(Icons.medication),
+                        ),
+                        title: Text(item['name'] ?? "Unknown Item"),
+                        subtitle: Text("Quantity: ${item['quantity'] ?? 1}"),
+                        trailing: Text("RM ${((item['price'] ?? 0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}"),
                       );
                     },
                   ),
 
                   const Divider(height: 40),
 
-                  // --- 4. Total Summary ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Grand Total", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("RM ${double.parse(order['total_amount'].toString()).toStringAsFixed(2)}",
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green)),
-                    ],
+                  // --- 4. Bill Breakdown ---
+                  _buildPriceRow("Subtotal", calculatedSubtotal),
+                  _buildPriceRow("Delivery Fee", deliveryFee),
+
+                  const SizedBox(height: 10),
+                  const Divider(thickness: 1.5),
+
+                  // --- 5. Grand Total ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Grand Total", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(
+                          "RM ${grandTotal.toStringAsFixed(2)}",
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -87,7 +132,20 @@ class OrderDetailsPage extends StatelessWidget {
     );
   }
 
-  // Helper widget to build nice status badges
+  // Helper widget to build the price lines
+  Widget _buildPriceRow(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+          Text("RM ${amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusChip({required String label, required Color color, required IconData icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -97,7 +155,6 @@ class OrderDetailsPage extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.5)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),

@@ -3,17 +3,19 @@ import 'package:mad/cartmanager.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/paymentpage.dart';
-
 import 'paymentpage.dart'; // We will create this next
+import 'package:mad/addresspage.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
+
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  String deliveryAddress = "123, Jalan Pharmacy, Taman NoSakit, 56000 Kuala Lumpur";
   String selectedShipping = "Standard";
   double shippingFee = 5.00;
 
@@ -50,16 +52,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("Jin Han", style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text("123, Jalan Pharmacy, Taman NoSakit, 56000 Kuala Lumpur"),
-                        Text("+60 12-345 6789", style: TextStyle(color: Colors.grey)),
+                      children: [
+                        Text(deliveryAddress),
                       ],
                     ),
                   ),
                   TextButton(
-                    onPressed: () {
-                      Utils.snackbar(context, "Address Management (Member 3 Feature)");
+                    onPressed: () async {
+                      // Navigate to AddressPage and wait for the result
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => AddressPage()),
+                      );
+
+                      // If the user confirmed an address, update the UI
+                      if (result != null && result is String) {
+                        setState(() {
+                          deliveryAddress = result;
+                        });
+                      }
                     },
                     child: const Text("Change"),
                   )
@@ -143,10 +154,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                 onPressed: () {
-                  // Navigate to Payment Simulation
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => PaymentPage(amount: total))
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PaymentPage(
+                        subtotal: subtotal,        // Pass your cart subtotal
+                        deliveryFee: shippingFee,  // Pass the RM 5.00 or RM 12.00 fee
+                        deliveryAddress: deliveryAddress,
+                      ),
+                    ),
                   );
                 },
                 child: const Text("Proceed to Payment",
