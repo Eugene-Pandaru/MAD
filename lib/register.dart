@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/footer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -30,14 +31,23 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   @override
+  void dispose() {
+    Utils.disposeControllers([
+      nicknameController,
+      emailController,
+      passwordController,
+      confirmPasswordController
+    ]);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Sign Up"), centerTitle: true),
-
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          /// 🔹 Main Content
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -45,12 +55,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    /// 🖼️ Logo
                     Image.asset('assets/logo.png', height: 100),
-
                     const SizedBox(height: 20),
 
-                    /// Nickname
+                    /// 👤 Nickname (At least 3 characters)
                     TextFormField(
                       controller: nicknameController,
                       decoration: inputDecoration("Nickname"),
@@ -58,13 +66,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         if (value == null || value.isEmpty) {
                           return "Please enter nickname";
                         }
+                        if (value.length < 3) {
+                          return "Nickname must be at least 3 characters";
+                        }
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
 
-                    /// Email
+                    /// 📧 Email (@gmail.com format)
                     TextFormField(
                       controller: emailController,
                       decoration: inputDecoration("Email"),
@@ -72,28 +82,25 @@ class _RegisterPageState extends State<RegisterPage> {
                         if (value == null || value.isEmpty) {
                           return "Please enter email";
                         }
+                        // Regex for @gmail.com validation
+                        if (!RegExp(r"^[a-zA-Z0-9._%+-]+@gmail\.com$").hasMatch(value)) {
+                          return "Email must be a valid @gmail.com address";
+                        }
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
 
-                    /// Password
+                    /// 🔑 Password (At least 6 characters)
                     TextFormField(
                       controller: passwordController,
                       obscureText: obscurePassword,
                       decoration: inputDecoration("Password").copyWith(
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            obscurePassword ? Icons.visibility : Icons.visibility_off,
                           ),
-                          onPressed: () {
-                            setState(() {
-                              obscurePassword = !obscurePassword;
-                            });
-                          },
+                          onPressed: () => setState(() => obscurePassword = !obscurePassword),
                         ),
                       ),
                       validator: (value) {
@@ -106,25 +113,18 @@ class _RegisterPageState extends State<RegisterPage> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
 
-                    /// Confirm Password
+                    /// 🔑 Confirm Password (Must match)
                     TextFormField(
                       controller: confirmPasswordController,
                       obscureText: obscureConfirmPassword,
                       decoration: inputDecoration("Confirm Password").copyWith(
                         suffixIcon: IconButton(
                           icon: Icon(
-                            obscureConfirmPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
                           ),
-                          onPressed: () {
-                            setState(() {
-                              obscureConfirmPassword = !obscureConfirmPassword;
-                            });
-                          },
+                          onPressed: () => setState(() => obscureConfirmPassword = !obscureConfirmPassword),
                         ),
                       ),
                       validator: (value) {
@@ -132,31 +132,23 @@ class _RegisterPageState extends State<RegisterPage> {
                           return "Please confirm password";
                         }
                         if (value != passwordController.text) {
-                          return "Password does not match";
+                          return "Passwords do not match";
                         }
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
 
-                    /// ✅ Checkbox
+                    /// ✅ Agreement Checkbox
                     Row(
                       children: [
                         Checkbox(
                           value: agree,
-                          onChanged: (value) {
-                            setState(() {
-                              agree = value!;
-                            });
-                          },
+                          onChanged: (value) => setState(() => agree = value!),
                         ),
-                        const Expanded(
-                          child: Text("Agree to terms and conditions"),
-                        ),
+                        const Expanded(child: Text("Agree to terms and conditions")),
                       ],
                     ),
-
                     const SizedBox(height: 20),
 
                     /// 🔘 Reset Button
@@ -164,61 +156,41 @@ class _RegisterPageState extends State<RegisterPage> {
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () {
-                          Utils.resetControllers([
-                            nicknameController,
-                            emailController,
-                            passwordController,
-                            confirmPasswordController,
-                          ]);
-
-                          setState(() {
-                            agree = false;
-                          });
-
-                          Utils.snackbar(
-                            context,
-                            "Form reset",
-                            color: Colors.black,
-                          );
+                          Utils.resetControllers([nicknameController, emailController, passwordController, confirmPasswordController]);
+                          setState(() => agree = false);
+                          Utils.snackbar(context, "Form reset");
                         },
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                         child: const Text("Reset"),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
                       ),
                     ),
-
-                    /// ⬆️ Space to prevent mis-click
                     const SizedBox(height: 20),
 
                     /// 🔘 Register Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate() && agree) {
-                            Utils.snackbar(
-                              context,
-                              "Registration Successful",
-                              color: Colors.green,
-                            );
+                            try {
+                              final supabase = Supabase.instance.client;
+                              
+                              // Insert into Supabase
+                              await supabase.from('users_profile').insert({
+                                'nickname': nicknameController.text,
+                                'email': emailController.text,
+                                'password': passwordController.text, // Note: In production, use Supabase Auth for security!
+                              });
 
-                            Utils.resetControllers([
-                              nicknameController,
-                              emailController,
-                              passwordController,
-                              confirmPasswordController,
-                            ]);
-
-                            setState(() {
-                              agree = false;
-                            });
+                              Utils.snackbar(context, "Registration Successful", color: Colors.green);
+                              
+                              // Clear and navigate back
+                              Navigator.pop(context);
+                            } catch (e) {
+                              Utils.snackbar(context, "Registration failed: ${e.toString()}", color: Colors.red);
+                            }
                           } else if (!agree) {
-                            Utils.snackbar(
-                              context,
-                              "Please agree to terms",
-                              color: Colors.red,
-                            );
+                            Utils.snackbar(context, "Please agree to terms", color: Colors.red);
                           }
                         },
                         child: const Text("Register"),
@@ -229,8 +201,6 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
           ),
-
-          /// 🔻 Footer
           const Footer(),
         ],
       ),

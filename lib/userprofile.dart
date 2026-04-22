@@ -4,13 +4,22 @@ import 'package:mad/footer.dart';
 import 'package:mad/login.dart';
 import 'package:mad/orderhistory.dart';
 import 'package:mad/points.dart';
+import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 
-class UserProfilePage extends StatelessWidget {
+class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
   @override
+  State<UserProfilePage> createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> {
+  @override
   Widget build(BuildContext context) {
+    // Get the current user data from Utils
+    final user = Utils.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("User Profile"),
@@ -33,13 +42,13 @@ class UserProfilePage extends StatelessWidget {
                     child: Icon(Icons.person, size: 60, color: Colors.white),
                   ),
                   const SizedBox(height: 15),
-                  const Text(
-                    "John Doe",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  Text(
+                    user?['nickname'] ?? "Guest",
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  const Text(
-                    "johndoe@example.com",
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  Text(
+                    user?['email'] ?? "No Email",
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 30),
 
@@ -47,11 +56,14 @@ class UserProfilePage extends StatelessWidget {
                   buildProfileItem(
                     icon: Icons.edit,
                     title: "Edit Profile",
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      // 🔄 Wait for the edit page to close
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const EditProfilePage()),
                       );
+                      // 🔄 Rebuild the page with new data
+                      setState(() {});
                     },
                   ),
                   buildProfileItem(
@@ -91,7 +103,9 @@ class UserProfilePage extends StatelessWidget {
                     textColor: Colors.red,
                     iconColor: Colors.red,
                     onTap: () {
-                      // Simple Logout Logic
+                      // Clear user data on logout
+                      Utils.currentUser = null;
+
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const LoginPage()),

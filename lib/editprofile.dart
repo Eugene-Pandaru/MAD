@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -11,9 +12,10 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  final supabase = Supabase.instance.client;
 
-  final TextEditingController nicknameController = TextEditingController(text: "John Doe");
-  final TextEditingController emailController = TextEditingController(text: "johndoe@example.com");
+  late TextEditingController nicknameController;
+  late TextEditingController emailController;
   final TextEditingController currentPasswordController = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
@@ -21,6 +23,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool obscureCurrent = true;
   bool obscureNew = true;
   bool obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with current user data from Utils
+    nicknameController = TextEditingController(text: Utils.currentUser?['nickname'] ?? "");
+    emailController = TextEditingController(text: Utils.currentUser?['email'] ?? "");
+  }
 
   InputDecoration inputDecoration(String label) {
     return InputDecoration(
@@ -99,6 +109,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         if (value == null || value.isEmpty) {
                           return "Please enter nickname";
                         }
+                        if (value.length < 3) {
+                          return "Nickname must be at least 3 characters";
+                        }
                         return null;
                       },
                     ),
@@ -117,6 +130,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       label: "Current Password",
                       obscureText: obscureCurrent,
                       onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter current password";
+                        }
+                        // Verify if it matches the current password in our local session
+                        if (value != Utils.currentUser?['password']) {
+                          return "Incorrect current password";
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 15),
 
@@ -127,8 +150,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       obscureText: obscureNew,
                       onToggle: () => setState(() => obscureNew = !obscureNew),
                       validator: (value) {
-                        if (value != null && value.isNotEmpty && value.length < 6) {
-                          return "Password must be at least 6 characters";
+                        if (value != null && value.isNotEmpty) {
+                          if (value == currentPasswordController.text) {
+                            return "New Password cannot same as current Password";
+                          }
+                          if (value.length < 6) {
+                            return "New password must be at least 6 characters";
+                          }
                         }
                         return null;
                       },
@@ -155,11 +183,42 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
-                            // Logic to update profile would go here
-                            Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
-                            Navigator.pop(context);
+                            try {
+                              // Ensure we have a user ID
+                              final userId = Utils.currentUser?['id'];
+                              if (userId == null) {
+                                Utils.snackbar(context, "Session expired. Please login again.", color: Colors.red);
+                                return;
+                              }
+
+                              // Data to update
+                              final Map<String, dynamic> updateData = {
+                                'nickname': nicknameController.text,
+                              };
+
+                              // If user filled in a new password, update it too
+                              if (newPasswordController.text.isNotEmpty) {
+                                updateData['password'] = newPasswordController.text;
+                              }
+
+                              // Update in Supabase
+                              final response = await supabase
+                                  .from('users_profile')
+                                  .update(updateData)
+                                  .eq('id', userId)
+                                  .select()
+                                  .single();
+
+                              // Update local global variable
+                              Utils.currentUser = response;
+
+                              Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
+                              Navigator.pop(context);
+                            } catch (e) {
+                              Utils.snackbar(context, "Update failed: ${e.toString()}", color: Colors.red);
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

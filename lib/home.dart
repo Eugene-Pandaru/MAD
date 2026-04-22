@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mad/myqr.dart';
+import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
 import 'package:mad/userprofile.dart';
@@ -16,6 +17,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get current user nickname
+    final String nickname = Utils.currentUser?['nickname'] ?? "User";
+
     return Scaffold(
 
       /// 🟢 AppBar with Logo
@@ -155,6 +159,20 @@ class HomePage extends StatelessWidget {
 
           const SizedBox(height: 10),
 
+          /// 🔹 Welcome Message
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Hello, $nickname!",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
           /// 🔹 Categories
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -186,9 +204,9 @@ class HomePage extends StatelessWidget {
                 color: Colors.green.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                "Announcement:\n\nWelcome to NoSakit Pharmacy App!",
-                style: TextStyle(fontSize: 14),
+              child: Text(
+                "Announcement:\n\nWelcome back to NoSakit Pharmacy App, $nickname!",
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           ),
