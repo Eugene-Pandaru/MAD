@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 class Utils {
+  /// 👤 Logged-in User Data
+  static Map<String, dynamic>? currentUser;
+
   /// 🔔 Snackbar
   static void snackbar(
     BuildContext context,
