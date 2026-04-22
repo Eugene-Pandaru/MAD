@@ -3,6 +3,7 @@ import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/forgotpass.dart';
 import 'package:mad/home.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -128,23 +129,41 @@ class _LoginPageState extends State<LoginPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
-                            if (emailController.text == "abc" &&
-                                passwordController.text == "abc") {
+                            try {
+                              final supabase = Supabase.instance.client;
 
-                              Utils.snackbar(context, "Login success",
-                                  color: Colors.green);
+                              // Query the users_profile table for matching email and password
+                              final data = await supabase
+                                  .from('users_profile')
+                                  .select()
+                                  .eq('email', emailController.text)
+                                  .eq('password', passwordController.text)
+                                  .maybeSingle();
 
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const HomePage(),
-                                ),
-                              );
+                              if (data != null) {
+                                // ✅ Save user data globally
+                                Utils.currentUser = data;
 
-                            } else {
-                              Utils.snackbar(context, "Invalid email or password",
+                                Utils.snackbar(context, "Login success",
+                                    color: Colors.green);
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomePage(),
+                                  ),
+                                );
+                              } else {
+                                // Generic error for security
+                                Utils.snackbar(
+                                    context, "Invalid email or password",
+                                    color: Colors.red);
+                              }
+                            } catch (e) {
+                              Utils.snackbar(
+                                  context, "An error occurred during login",
                                   color: Colors.red);
                             }
                           }
