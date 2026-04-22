@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mad/footer.dart';
+import 'package:mad/utility.dart';
 
 import 'orderdetails.dart';
 
@@ -16,6 +17,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userId = Utils.currentUser?['id'];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Order History"),
@@ -26,23 +29,20 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         children: [
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              // Fetch orders and sort by latest date
               future: supabase
                   .from('orders')
                   .select()
+                  .eq('user_id', userId)
                   .order('created_at', ascending: false),
               builder: (context, snapshot) {
-                // 1. Show loading spinner while waiting for internet
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // 2. Handle Errors
                 if (snapshot.hasError) {
                   return Center(child: Text("Error: ${snapshot.error}"));
                 }
 
-                // 3. Handle Empty State
                 final orders = snapshot.data ?? [];
                 if (orders.isEmpty) {
                   return const Center(
@@ -57,14 +57,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                   );
                 }
 
-                // 4. Show the List
                 return ListView.builder(
                   padding: const EdgeInsets.all(15),
                   itemCount: orders.length,
                   itemBuilder: (context, index) {
                     final order = orders[index];
-
-                    // Format the date string (e.g., 2026-04-14)
                     String rawDate = order['created_at'].toString();
                     String formattedDate = rawDate.split('T')[0];
 
@@ -77,7 +74,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => OrderDetailsPage(order: order), // Pass the data!
+                              builder: (context) => OrderDetailsPage(order: order),
                             ),
                           );
                         },
@@ -87,7 +84,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           child: const Icon(Icons.local_shipping, color: Colors.green),
                         ),
                         title: Text(
-                          "Order #${order['id'].toString().substring(0, 8).toUpperCase()}",
+                          "Order #${order['id']}", // Directly show O00001
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Column(

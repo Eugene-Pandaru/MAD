@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/home.dart';
+import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
@@ -97,7 +98,8 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _saveOrderToDatabase(String method) async {
     await Supabase.instance.client.from('orders').insert({
-      'user_name': 'Jin Han',
+      'user_id': Utils.currentUser?['id'],
+      'user_name': Utils.currentUser?['nickname'] ?? 'Guest',
       'total_amount': totalAmount,
       'delivery_fee': widget.deliveryFee,
       'delivery_address': widget.deliveryAddress,
