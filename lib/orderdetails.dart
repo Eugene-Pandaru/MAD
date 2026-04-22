@@ -29,7 +29,8 @@ class OrderDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // --- 1. Order ID & Date ---
-                  Text("ORDER #${(order['id'] ?? 'N/A').toString().substring(0, 8).toUpperCase()}",
+                  // 🛠️ FIX: Removed .substring(0, 8) because the new ID format (e.g., O00001) is shorter than 8 characters.
+                  Text("ORDER #${(order['id'] ?? 'N/A').toString().toUpperCase()}",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   Text("Date: ${order['created_at']?.toString().split('T')[0] ?? 'N/A'}",
                       style: const TextStyle(color: Colors.grey)),
