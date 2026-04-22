@@ -5,7 +5,7 @@ import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
 import 'package:mad/userprofile.dart';
 import 'orderhistory.dart';
-
+import 'chatbot.dart';
 import 'productlist.dart';
 
 class HomePage extends StatelessWidget {
@@ -186,7 +186,10 @@ class HomePage extends StatelessWidget {
                   child: buildCategory(Icons.medical_services, "Product"),
                 ),
                 buildCategory(Icons.health_and_safety, "Location"),
-                buildCategory(Icons.child_care, "E-Consult"),
+                InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatBotPage())),
+                  child: buildCategory(Icons.child_care, "Pharmacy Bot"), // Changed name to Bot
+                ),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
             ),
@@ -210,21 +213,6 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
-
-          /// 🔹 E-Consultation
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: const Text("E-Consultation"),
-              ),
-            ),
-          ),
-
-          const Spacer(),
 
           /// 🔻 Bottom Navigation (FINAL FIXED)
           Stack(
@@ -286,7 +274,7 @@ class HomePage extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.lightBlue.withOpacity(0.4),
+                          color: Colors.lightBlue.withValues(alpha: 0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),

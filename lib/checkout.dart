@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mad/cartmanager.dart';
-import 'package:mad/utility.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/paymentpage.dart';
-import 'paymentpage.dart'; // We will create this next
 import 'package:mad/addresspage.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -101,29 +99,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
             const Text("Shipping Method",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            RadioListTile(
-              title: const Text("Standard Delivery (3-5 Days)"),
-              subtitle: const Text("RM 5.00"),
-              value: "Standard",
+            RadioGroup<String>(
               groupValue: selectedShipping,
               onChanged: (value) {
                 setState(() {
-                  selectedShipping = value.toString();
-                  shippingFee = 5.00;
+                  selectedShipping = value!;
+                  shippingFee = value == "Standard" ? 5.00 : 12.00;
                 });
               },
-            ),
-            RadioListTile(
-              title: const Text("Express Delivery (Next Day)"),
-              subtitle: const Text("RM 12.00"),
-              value: "Express",
-              groupValue: selectedShipping,
-              onChanged: (value) {
-                setState(() {
-                  selectedShipping = value.toString();
-                  shippingFee = 12.00;
-                });
-              },
+              child: Column(
+                children: [
+                  RadioListTile<String>(
+                    title: const Text("Standard Delivery (3-5 Days)"),
+                    subtitle: const Text("RM 5.00"),
+                    value: "Standard",
+                  ),
+                  RadioListTile<String>(
+                    title: const Text("Express Delivery (Next Day)"),
+                    subtitle: const Text("RM 12.00"),
+                    value: "Express",
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 25),

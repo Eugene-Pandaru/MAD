@@ -29,7 +29,7 @@ class OrderDetailsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // --- 1. Order ID & Date ---
-                  Text("ORDER #${(order['id'] ?? 'N/A').toString().substring(0, 8).toUpperCase()}",
+                  Text("ORDER #${order['id'] ?? 'N/A'}",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   Text("Date: ${order['created_at']?.toString().split('T')[0] ?? 'N/A'}",
                       style: const TextStyle(color: Colors.grey)),
@@ -150,9 +150,9 @@ class OrderDetailsPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [

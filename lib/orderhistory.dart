@@ -86,9 +86,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           backgroundColor: Colors.green.shade100,
                           child: const Icon(Icons.local_shipping, color: Colors.green),
                         ),
-                        title: Text(
-                          "Order #${order['id'].toString().substring(0, 8).toUpperCase()}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        title: Text("Order #${order['id']}"
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
