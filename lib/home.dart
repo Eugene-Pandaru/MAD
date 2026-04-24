@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mad/myqr.dart';
-import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
 import 'package:mad/userprofile.dart';
 import 'orderhistory.dart';
-import 'chatbot.dart';
+
 import 'productlist.dart';
 
 class HomePage extends StatelessWidget {
@@ -17,9 +16,6 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get current user nickname
-    final String nickname = Utils.currentUser?['nickname'] ?? "User";
-
     return Scaffold(
 
       /// 🟢 AppBar with Logo
@@ -159,20 +155,6 @@ class HomePage extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          /// 🔹 Welcome Message
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Hello, $nickname!",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
           /// 🔹 Categories
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -186,10 +168,7 @@ class HomePage extends StatelessWidget {
                   child: buildCategory(Icons.medical_services, "Product"),
                 ),
                 buildCategory(Icons.health_and_safety, "Location"),
-                InkWell(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatBotPage())),
-                  child: buildCategory(Icons.child_care, "Pharmacy Bot"),
-                ),
+                buildCategory(Icons.child_care, "E-Consult"),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
             ),
@@ -207,14 +186,27 @@ class HomePage extends StatelessWidget {
                 color: Colors.green.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                "Announcement:\n\nWelcome back to NoSakit Pharmacy App, $nickname!",
-                style: const TextStyle(fontSize: 14),
+              child: const Text(
+                "Announcement:\n\nWelcome to NoSakit Pharmacy App!",
+                style: TextStyle(fontSize: 14),
               ),
             ),
           ),
 
-          const Spacer(), // Pushes everything below to the bottom
+          /// 🔹 E-Consultation
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                child: const Text("E-Consultation"),
+              ),
+            ),
+          ),
+
+          const Spacer(),
 
           /// 🔻 Bottom Navigation (FINAL FIXED)
           Stack(
@@ -276,7 +268,7 @@ class HomePage extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.lightBlue.withValues(alpha: 0.4),
+                          color: Colors.lightBlue.withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
