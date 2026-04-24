@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/footer.dart';
 
 class ChatBotPage extends StatefulWidget {
@@ -15,7 +16,6 @@ class _ChatBotPageState extends State<ChatBotPage> {
   ];
 
   // --- KEYWORD DATABASE ---
-  // You can add as many keywords and answers as you like here
   final Map<String, String> _botKnowledge = {
     "fever": "For fever, we recommend Paracetamol. Take 1-2 tablets every 4-6 hours.",
     "cough": "For dry cough, try our Cough Syrup. For wet cough, please consult a pharmacist.",
@@ -31,25 +31,21 @@ class _ChatBotPageState extends State<ChatBotPage> {
   void _handleMessage(String text) {
     if (text.trim().isEmpty) return;
 
-    // 1. Add User Message to UI
     setState(() {
       _messages.add({"role": "user", "content": text});
     });
     String userQuery = text.toLowerCase();
     _controller.clear();
 
-    // 2. Logic to find a match
     String botReply = "I'm sorry, I don't understand that. Try asking about 'fever', 'delivery', or 'location'.";
 
-    // Loop through keys to see if the user mentioned any keyword
     for (var keyword in _botKnowledge.keys) {
       if (userQuery.contains(keyword)) {
         botReply = _botKnowledge[keyword]!;
-        break; // Stop at the first match
+        break;
       }
     }
 
-    // 3. Simulate a short delay to make it feel more "real"
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
@@ -62,54 +58,120 @@ class _ChatBotPageState extends State<ChatBotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pharmacy Bot"), backgroundColor: Colors.green),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(15),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                bool isUser = _messages[index]['role'] == "user";
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 5),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.green.shade100 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-                    child: Text(_messages[index]['content']!),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 🟢 Header (Matching home page style)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    onSubmitted: _handleMessage,
-                    decoration: const InputDecoration(
-                      hintText: "Type 'fever', 'delivery'...",
-                      border: OutlineInputBorder(),
+                  Text(
+                    "Pharmacy Bot",
+                    style: GoogleFonts.openSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.green),
-                  onPressed: () => _handleMessage(_controller.text),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Footer(),
-        ],
+
+            // 🟢 Chat Messages
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  bool isUser = _messages[index]['role'] == "user";
+                  return Align(
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: isUser 
+                            ? const Color(0xFF1392AB) 
+                            : const Color(0xFF8DC6BC).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(20),
+                          topRight: const Radius.circular(20),
+                          bottomLeft: Radius.circular(isUser ? 20 : 0),
+                          bottomRight: Radius.circular(isUser ? 0 : 20),
+                        ),
+                      ),
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                      child: Text(
+                        _messages[index]['content']!,
+                        style: GoogleFonts.openSans(
+                          color: isUser ? Colors.white : Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // 🟢 Input Area
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  )
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: TextField(
+                        controller: _controller,
+                        onSubmitted: _handleMessage,
+                        style: GoogleFonts.openSans(),
+                        decoration: InputDecoration(
+                          hintText: "Ask about medicine...",
+                          hintStyle: GoogleFonts.openSans(color: Colors.grey),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _handleMessage(_controller.text),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1392AB),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.send, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Footer(),
+          ],
+        ),
       ),
     );
   }
