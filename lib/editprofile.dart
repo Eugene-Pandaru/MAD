@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,7 +28,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Initialize with current user data from Utils
     nicknameController = TextEditingController(text: Utils.currentUser?['nickname'] ?? "");
     emailController = TextEditingController(text: Utils.currentUser?['email'] ?? "");
   }
@@ -35,7 +35,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   InputDecoration inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      labelStyle: GoogleFonts.openSans(color: Colors.grey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: Color(0xFF1392AB)),
+      ),
     );
   }
 
@@ -49,9 +54,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
+      style: GoogleFonts.openSans(),
       decoration: inputDecoration(label).copyWith(
         suffixIcon: IconButton(
-          icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off),
+          icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off, color: const Color(0xFF1392AB)),
           onPressed: onToggle,
         ),
       ),
@@ -74,167 +80,142 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Profile"),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// 📧 Email (Read Only)
-                    TextFormField(
-                      controller: emailController,
-                      enabled: false,
-                      decoration: inputDecoration("Email (Cannot be changed)").copyWith(
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                      ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 🟢 Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Text(
+                    "Edit Profile",
+                    style: GoogleFonts.openSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
-                    const SizedBox(height: 15),
+                  ),
+                ],
+              ),
+            ),
 
-                    /// 👤 Nickname
-                    TextFormField(
-                      controller: nicknameController,
-                      decoration: inputDecoration("Nickname"),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter nickname";
-                        }
-                        if (value.length < 3) {
-                          return "Nickname must be at least 3 characters";
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 25),
-
-                    const Text(
-                      "Change Password",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const Divider(),
-                    const SizedBox(height: 10),
-
-                    /// 🔑 Current Password
-                    buildPasswordField(
-                      controller: currentPasswordController,
-                      label: "Current Password",
-                      obscureText: obscureCurrent,
-                      onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter current password";
-                        }
-                        // Verify if it matches the current password in our local session
-                        if (value != Utils.currentUser?['password']) {
-                          return "Incorrect current password";
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 15),
-
-                    /// 🔑 New Password
-                    buildPasswordField(
-                      controller: newPasswordController,
-                      label: "New Password",
-                      obscureText: obscureNew,
-                      onToggle: () => setState(() => obscureNew = !obscureNew),
-                      validator: (value) {
-                        if (value != null && value.isNotEmpty) {
-                          if (value == currentPasswordController.text) {
-                            return "New Password cannot same as current Password";
-                          }
-                          if (value.length < 6) {
-                            return "New password must be at least 6 characters";
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 15),
-
-                    /// 🔑 Confirm New Password
-                    buildPasswordField(
-                      controller: confirmPasswordController,
-                      label: "Confirm New Password",
-                      obscureText: obscureConfirm,
-                      onToggle: () => setState(() => obscureConfirm = !obscureConfirm),
-                      validator: (value) {
-                        if (newPasswordController.text.isNotEmpty && value != newPasswordController.text) {
-                          return "Passwords do not match";
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    /// 🔘 Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            try {
-                              // Ensure we have a user ID
-                              final userId = Utils.currentUser?['id'];
-                              if (userId == null) {
-                                Utils.snackbar(context, "Session expired. Please login again.", color: Colors.red);
-                                return;
-                              }
-
-                              // Data to update
-                              final Map<String, dynamic> updateData = {
-                                'nickname': nicknameController.text,
-                              };
-
-                              // If user filled in a new password, update it too
-                              if (newPasswordController.text.isNotEmpty) {
-                                updateData['password'] = newPasswordController.text;
-                              }
-
-                              // Update in Supabase
-                              final response = await supabase
-                                  .from('users_profile')
-                                  .update(updateData)
-                                  .eq('id', userId)
-                                  .select()
-                                  .single();
-
-                              // Update local global variable
-                              Utils.currentUser = response;
-
-                              Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
-                              Navigator.pop(context);
-                            } catch (e) {
-                              Utils.snackbar(context, "Update failed: ${e.toString()}", color: Colors.red);
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// 📧 Email (Read Only)
+                      TextFormField(
+                        controller: emailController,
+                        enabled: false,
+                        style: GoogleFonts.openSans(color: Colors.grey),
+                        decoration: inputDecoration("Email (Read Only)").copyWith(
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
                         ),
-                        child: const Text("Submit", style: TextStyle(fontSize: 16)),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+
+                      /// 👤 Nickname
+                      TextFormField(
+                        controller: nicknameController,
+                        style: GoogleFonts.openSans(),
+                        decoration: inputDecoration("Nickname"),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return "Please enter nickname";
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 30),
+
+                      Text(
+                        "Security Settings",
+                        style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const Divider(height: 30),
+
+                      buildPasswordField(
+                        controller: currentPasswordController,
+                        label: "Current Password",
+                        obscureText: obscureCurrent,
+                        onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            if (value != Utils.currentUser?['password']) return "Incorrect current password";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 15),
+
+                      buildPasswordField(
+                        controller: newPasswordController,
+                        label: "New Password",
+                        obscureText: obscureNew,
+                        onToggle: () => setState(() => obscureNew = !obscureNew),
+                      ),
+                      const SizedBox(height: 15),
+
+                      buildPasswordField(
+                        controller: confirmPasswordController,
+                        label: "Confirm New Password",
+                        obscureText: obscureConfirm,
+                        onToggle: () => setState(() => obscureConfirm = !obscureConfirm),
+                        validator: (value) {
+                          if (newPasswordController.text.isNotEmpty && value != newPasswordController.text) {
+                            return "Passwords do not match";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      /// 🔘 Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (_formKey.currentState!.validate()) {
+                              try {
+                                final userId = Utils.currentUser?['id'];
+                                final Map<String, dynamic> updateData = {'nickname': nicknameController.text};
+                                if (newPasswordController.text.isNotEmpty) updateData['password'] = newPasswordController.text;
+
+                                final response = await supabase.from('users_profile').update(updateData).eq('id', userId).select().single();
+                                Utils.currentUser = response;
+                                Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
+                                Navigator.pop(context);
+                              } catch (e) {
+                                Utils.snackbar(context, "Update failed", color: Colors.red);
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1392AB),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          ),
+                          child: Text("Save Changes", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const Footer(),
-        ],
+            const Footer(),
+          ],
+        ),
       ),
     );
   }
