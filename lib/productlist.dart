@@ -4,6 +4,7 @@ import 'package:mad/utility.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/cart.dart';
 import 'package:mad/footer.dart';
+import 'package:mad/productdetails.dart';
 
 class ProductListPage extends StatefulWidget {
   const ProductListPage({super.key});
@@ -104,20 +105,30 @@ class _ProductListPageState extends State<ProductListPage> {
               itemCount: displayedProducts.length,
               itemBuilder: (context, index) {
                 final item = displayedProducts[index];
-                return Card(
-                  child: Column(
-                    children: [
-                      Expanded(child: Image.network(item['image_url'])),
-                      Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text("RM ${item['price']}", style: const TextStyle(color: Colors.orange)),
-                      ElevatedButton(
-                        onPressed: () {
-                          CartManager.addToCart(item);
-                          Utils.snackbar(context, "Added ${item['name']}");
-                        },
-                        child: const Text("Add"),
-                      )
-                    ],
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductDetailsPage(product: item),
+                      ),
+                    );
+                  },
+                  child: Card(
+                    child: Column(
+                      children: [
+                        Expanded(child: Image.network(item['image_url'])),
+                        Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text("RM ${item['price']}", style: const TextStyle(color: Colors.orange)),
+                        ElevatedButton(
+                          onPressed: () {
+                            CartManager.addToCart(item);
+                            Utils.snackbar(context, "Added ${item['name']}");
+                          },
+                          child: const Text("Add"),
+                        )
+                      ],
+                    ),
                   ),
                 );
               },

@@ -9,13 +9,23 @@ class PaymentPage extends StatefulWidget {
   final double subtotal;
   final double deliveryFee;
   final String deliveryAddress;
+  final String paymentType;
+
+  final String? pharmacistName;
+  final String? apptDate;
+  final String? apptTime;
 
   const PaymentPage({
     super.key,
     required this.subtotal,
     required this.deliveryFee,
     required this.deliveryAddress,
+    required this.paymentType,
+    this.pharmacistName,
+    this.apptDate,
+    this.apptTime,
   });
+
 
   @override
   State<PaymentPage> createState() => _PaymentPageState();
@@ -62,7 +72,7 @@ class _PaymentPageState extends State<PaymentPage> {
           (totalAmount * 100).toInt().toString(), 'MYR', finalMethodLabel);
 
       // 4. Save to Supabase
-      await _saveOrderToDatabase(finalMethodLabel);
+      await _saveToDatabase(finalMethodLabel);
 
       if (!mounted) return;
       setState(() => isProcessing = false);
@@ -81,7 +91,7 @@ class _PaymentPageState extends State<PaymentPage> {
       await http.post(
         Uri.parse('https://api.stripe.com/v1/payment_intents'),
         headers: {
-          'Authorization': 'Bearer sk_test_51TMTra30pXzuvOG7huvUJr5GNa8dcHR5EuANhFYjRfMyzrzq5N7XH4gKOyeS71Vs9CWtJ5nFAcm41q0KV4uNsx5A00osQSZIc7',
+          'Authorization': 'Bearer sk_test_51TMTra30pXz2uvOG7huvUJr5GNa8dcHR5EuANhFYjRfMyzrzq5N7XH4gKOyeS71Vs9CWtJ5nFAcm41q0KV4uNsx5A00osQSZIc7',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: {
@@ -95,22 +105,36 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Future<void> _saveOrderToDatabase(String method) async {
-    await Supabase.instance.client.from('orders').insert({
-      'user_name': 'Jin Han',
-      'total_amount': totalAmount,
-      'delivery_fee': widget.deliveryFee,
-      'delivery_address': widget.deliveryAddress,
-      'status': 'Paid',
-      'payment_method': method, // e.g., "FPX - Maybank2u"
-      'delivery_status': 'PENDING',
-      'items': CartManager.cartItems.map((item) => {
-        'name': item.name,
-        'price': item.price,
-        'quantity': item.quantity,
-        'image_url': item.imageUrl,
-      }).toList(),
-    });
+  Future<void> _saveToDatabase(String method) async {
+    final supabase = Supabase.instance.client;
+
+    if (widget.paymentType == "medicine") {
+      // SAVE TO ORDERS TABLE
+      await supabase.from('orders').insert({
+        'user_name': 'Jin Han',
+        'total_amount': widget.subtotal + widget.deliveryFee,
+        'status': 'Paid',
+        'payment_method': method, // Use the 'method' passed in
+        'delivery_status': 'PENDING',
+        'items': CartManager.cartItems.map((item) => {
+          'name': item.name,
+          'price': item.price,
+          'quantity': item.quantity,
+          'image_url': item.imageUrl,
+        }).toList(),
+      });
+    } else {
+      // SAVE TO APPOINTMENTS TABLE
+      await supabase.from('appointments').insert({
+        'pharmacist_name': widget.pharmacistName,
+        'appointment_date': widget.apptDate,
+        'appointment_time': widget.apptTime,
+        'total_amount': widget.subtotal,
+        'status': 'Paid',
+        'payment_method': method, // Also save method for appointments
+        'user_name': 'Jin Han',
+      });
+    }
   }
 
   void _showSuccessDialog(String method) {
@@ -222,7 +246,7 @@ class _PaymentPageState extends State<PaymentPage> {
         const Text("Select Bank"),
         const SizedBox(height: 10),
         DropdownButtonFormField(
-          value: selectedBank,
+          initialValue: selectedBank,
           items: banks.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
           onChanged: (val) => setState(() => selectedBank = val!),
           decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -238,7 +262,7 @@ class _PaymentPageState extends State<PaymentPage> {
         const Text("Select E-wallet"),
         const SizedBox(height: 10),
         DropdownButtonFormField(
-          value: selectedWallet,
+          initialValue: selectedWallet,
           items: wallets.map((w) => DropdownMenuItem(value: w, child: Text(w))).toList(),
           onChanged: (val) => setState(() => selectedWallet = val!),
           decoration: const InputDecoration(border: OutlineInputBorder()),

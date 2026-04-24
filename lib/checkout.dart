@@ -158,6 +158,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         subtotal: subtotal,        // Pass your cart subtotal
                         deliveryFee: shippingFee,  // Pass the RM 5.00 or RM 12.00 fee
                         deliveryAddress: deliveryAddress,
+                        paymentType: "medicine", // Add this line here
                       ),
                     ),
                   );
