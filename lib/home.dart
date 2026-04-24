@@ -7,6 +7,7 @@ import 'orderhistory.dart';
 import 'chatbot.dart';
 import 'productlist.dart';
 import 'appointmenthistory.dart';
+import 'productdetails.dart'; // Import the details page
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -115,7 +116,8 @@ class _HomePageState extends State<HomePage> {
                           onTap: () {
                             _searchController.clear();
                             _removeOverlay();
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductListPage()));
+                            // Update search navigation to details page
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: product)));
                           },
                         );
                       },
@@ -286,41 +288,44 @@ class _HomePageState extends State<HomePage> {
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       final p = products[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 15),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Image.network(p['image_url'], width: 80, height: 80, fit: BoxFit.cover),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p['name'], style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 5),
-                                  Text("RM ${p['price']}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 5),
-                                  Text(p['category'] ?? "General", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 12)),
-                                ],
+                      return GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: p))),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 15),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: Image.network(p['image_url'], width: 80, height: 80, fit: BoxFit.cover),
                               ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductListPage())),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1392AB),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p['name'], style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 5),
+                                    Text("RM ${p['price']}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 5),
+                                    Text(p['category'] ?? "General", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 12)),
+                                  ],
+                                ),
                               ),
-                              child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
-                            ),
-                          ],
+                              ElevatedButton(
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: p))),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1392AB),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },

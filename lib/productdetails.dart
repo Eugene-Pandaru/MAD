@@ -3,10 +3,59 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/utility.dart';
 
-class ProductDetailsPage extends StatelessWidget {
+class ProductDetailsPage extends StatefulWidget {
   final Map<String, dynamic> product;
 
   const ProductDetailsPage({super.key, required this.product});
+
+  @override
+  State<ProductDetailsPage> createState() => _ProductDetailsPageState();
+}
+
+class _ProductDetailsPageState extends State<ProductDetailsPage> {
+  int quantity = 1;
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 80),
+              const SizedBox(height: 20),
+              Text(
+                "Successfully added into cart",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1392AB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Close Dialog
+                    Navigator.pop(context); // Return to Product List
+                  },
+                  child: Text("OK", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +84,7 @@ class ProductDetailsPage extends StatelessWidget {
               width: double.infinity,
               color: Colors.grey.shade50,
               child: Image.network(
-                product['image_url'],
+                widget.product['image_url'],
                 fit: BoxFit.contain,
                 errorBuilder: (c, e, s) => const Icon(Icons.image, size: 100, color: Colors.grey),
               ),
@@ -54,7 +103,7 @@ class ProductDetailsPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      product['category'] ?? "General",
+                      widget.product['category'] ?? "General",
                       style: GoogleFonts.openSans(
                         color: const Color(0xFF1392AB),
                         fontWeight: FontWeight.bold,
@@ -70,12 +119,12 @@ class ProductDetailsPage extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          product['name'],
+                          widget.product['name'],
                           style: GoogleFonts.openSans(fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Text(
-                        "RM ${product['price']}",
+                        "RM ${widget.product['price']}",
                         style: GoogleFonts.openSans(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -93,8 +142,38 @@ class ProductDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    product['description'] ?? "No description available for this product.",
+                    widget.product['description'] ?? "No description available for this product.",
                     style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+                  ),
+                  
+                  const SizedBox(height: 30),
+
+                  // 📦 Quantity Selector
+                  Text(
+                    "Quantity",
+                    style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (quantity > 1) setState(() => quantity--);
+                        },
+                        icon: const Icon(Icons.remove_circle_outline, color: Color(0xFF1392AB), size: 30),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Text(
+                          "$quantity",
+                          style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => quantity++),
+                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF1392AB), size: 30),
+                      ),
+                    ],
                   ),
                   
                   const SizedBox(height: 30),
@@ -143,8 +222,8 @@ class ProductDetailsPage extends StatelessWidget {
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () {
-                    CartManager.addToCart(product);
-                    Utils.snackbar(context, "Added ${product['name']} to cart");
+                    CartManager.addToCart(widget.product, quantity: quantity);
+                    _showSuccessDialog(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1392AB),
