@@ -43,6 +43,47 @@ class _ProductListPageState extends State<ProductListPage> {
     }
   }
 
+  void _showSuccessDialog(BuildContext context, String productName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 80),
+              const SizedBox(height: 20),
+              Text(
+                "Successfully added into cart",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.openSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1392AB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Close Dialog
+                  },
+                  child: Text("OK", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Map<String, dynamic>> displayedProducts = allProducts.where((item) {
@@ -197,8 +238,7 @@ class _ProductListPageState extends State<ProductListPage> {
                                               GestureDetector(
                                                 onTap: () {
                                                   CartManager.addToCart(item);
-                                                  Utils.snackbar(context,
-                                                      "Added ${item['name']}");
+                                                  _showSuccessDialog(context, item['name']);
                                                 },
                                                 child: Container(
                                                   padding: const EdgeInsets.all(5),
