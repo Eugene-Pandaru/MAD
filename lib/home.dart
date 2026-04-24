@@ -4,6 +4,10 @@ import 'package:mad/vouchers.dart';
 import 'package:mad/points.dart';
 import 'orderhistory.dart';
 
+import 'reminder_screen.dart';
+import 'pharmacy_map_screen.dart';
+import 'health_dashboard_screen.dart';
+
 import 'productlist.dart';
 
 class HomePage extends StatelessWidget {
@@ -156,14 +160,27 @@ class HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 InkWell(
-                  onTap: () =>
-                      Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => const ProductListPage())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductListPage())),
                   child: buildCategory(Icons.medical_services, "Product"),
                 ),
-                buildCategory(Icons.health_and_safety, "Not"),
-                buildCategory(Icons.child_care, "Sure"),
-                buildCategory(Icons.card_giftcard, "Rewards"),
+
+                // Member 3 - Reminders
+                InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReminderScreen())),
+                  child: buildCategory(Icons.alarm, "Reminders"),
+                ),
+
+                // Member 3 - Nearby Map
+                InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PharmacyMapScreen())),
+                  child: buildCategory(Icons.map, "Nearby Map"),
+                ),
+
+                // Member 3 - Health Hub / Dashboard
+                InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => HealthDashboard())),
+                  child: buildCategory(Icons.analytics, "Health Hub"),
+                ),
               ],
             ),
           ),
@@ -247,7 +264,11 @@ class HomePage extends StatelessWidget {
                 top: -30,
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Add action
+                    // Navigate to Member 3 Health Dashboard
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => HealthDashboard()),
+                    );
                   },
                   child: Container(
                     width: 70,
@@ -257,20 +278,21 @@ class HomePage extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.lightBlue.withOpacity(0.4),
+                          color: Colors.green.withOpacity(0.4),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: const Icon(
-                      Icons.add,
+                      Icons.health_and_safety, // Changed icon to represent health
                       color: Colors.white,
                       size: 32,
                     ),
                   ),
                 ),
               ),
+
             ],
           ),
         ],
