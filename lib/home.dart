@@ -188,7 +188,7 @@ class HomePage extends StatelessWidget {
                 buildCategory(Icons.health_and_safety, "Location"),
                 InkWell(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatBotPage())),
-                  child: buildCategory(Icons.child_care, "Pharmacy Bot"), // Changed name to Bot
+                  child: buildCategory(Icons.child_care, "Pharmacy Bot"),
                 ),
                 buildCategory(Icons.card_giftcard, "Rewards"),
               ],
@@ -213,6 +213,8 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
+
+          const Spacer(), // Pushes everything below to the bottom
 
           /// 🔻 Bottom Navigation (FINAL FIXED)
           Stack(
