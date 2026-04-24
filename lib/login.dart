@@ -3,6 +3,7 @@ import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/forgotpass.dart';
 import 'package:mad/home.dart';
+import 'package:mad/admin/adminlogin.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
@@ -62,6 +63,10 @@ class _LoginPageState extends State<LoginPage> {
                         if (value == null || value.isEmpty) {
                           return "Please enter email";
                         }
+                        if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(value)) {
+                           if (value == "admin") return null; // Allow "admin" keyword
+                           return "Please enter a valid email format";
+                        }
                         return null;
                       },
                     ),
@@ -89,6 +94,9 @@ class _LoginPageState extends State<LoginPage> {
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Please enter password";
+                        }
+                        if (value.length < 6 && value != "admin") {
+                          return "Password must be at least 6 characters";
                         }
                         return null;
                       },
@@ -131,10 +139,25 @@ class _LoginPageState extends State<LoginPage> {
                       child: ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState!.validate()) {
+                            // 🚀 SPECIAL ADMIN REDIRECT
+                            if (emailController.text == "admin" &&
+                                passwordController.text == "admin") {
+                              
+                              emailController.clear();
+                              passwordController.clear();
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminLoginPage(),
+                                ),
+                              );
+                              return;
+                            }
+
                             try {
                               final supabase = Supabase.instance.client;
 
-                              // Query the users_profile table for matching email and password
                               final data = await supabase
                                   .from('users_profile')
                                   .select()
@@ -143,7 +166,6 @@ class _LoginPageState extends State<LoginPage> {
                                   .maybeSingle();
 
                               if (data != null) {
-                                // ✅ Save user data globally
                                 Utils.currentUser = data;
 
                                 Utils.snackbar(context, "Login success",
@@ -156,7 +178,6 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 );
                               } else {
-                                // Generic error for security
                                 Utils.snackbar(
                                     context, "Invalid email or password",
                                     color: Colors.red);

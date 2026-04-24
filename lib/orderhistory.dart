@@ -18,12 +18,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 👤 Get the real user ID from our login session
+    final String? currentUserId = Utils.currentUser?['id'];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 🟢 Header (Matching home/productlist style)
+            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -46,9 +49,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
+                // 🔍 FIX: Added .eq('user_id', currentUserId) to filter orders for THIS user only
                 future: supabase
                     .from('orders')
                     .select()
+                    .eq('user_id', currentUserId ?? '')
                     .order('created_at', ascending: false),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
