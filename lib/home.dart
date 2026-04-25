@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/userprofile.dart';
+import 'package:mad/points.dart';
+import 'package:mad/vouchers.dart';
+import 'package:mad/rewards.dart';
+import 'package:mad/startpage.dart'; // 👈 Added Import
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orderhistory.dart';
 import 'chatbot.dart';
 import 'productlist.dart';
 import 'appointmenthistory.dart';
-import 'productdetails.dart'; // Import the details page
+import 'productdetails.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,7 +29,6 @@ class _HomePageState extends State<HomePage> {
   int _currentPromoPage = 0;
   List<Map<String, dynamic>> _searchResults = [];
   
-  // Store the future to prevent re-fetching on every build (setState)
   late Future<List<Map<String, dynamic>>> _initialProductsFuture;
 
   @override
@@ -116,8 +119,7 @@ class _HomePageState extends State<HomePage> {
                           onTap: () {
                             _searchController.clear();
                             _removeOverlay();
-                            // Update search navigation to details page
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: product)));
+                            _navigateTo(ProductDetailsPage(product: product));
                           },
                         );
                       },
@@ -129,237 +131,317 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 🔄 Refresh the Home Page state whenever we return from another screen
+  Future<void> _navigateTo(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+    if (mounted) setState(() {}); 
+  }
+
+  /// 🛡️ Logout Confirmation Dialog
+  Future<bool> _showLogoutConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Confirm Logout"),
+        content: const Text("Are you sure you want to log out?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text("No", style: GoogleFonts.openSans(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text("Yes", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String nickname = Utils.currentUser?['nickname'] ?? "John Doe William";
+    final String nickname = Utils.currentUser?['nickname'] ?? "User";
+    final userId = Utils.currentUser?['id'];
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🟢 Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 30,
-                      backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                    ),
-                    const SizedBox(width: 15),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Hi, Welcome Back,", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 14)),
-                        Text(nickname, style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // 🟢 Search Bar with Overlay
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: CompositedTransformTarget(
-                  link: _layerLink,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: "Search a Product",
-                        hintStyle: GoogleFonts.openSans(),
-                        border: InputBorder.none,
-                        icon: const Icon(Icons.search, color: Colors.grey),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                          onPressed: () {
-                            _searchController.clear();
-                            _removeOverlay();
+    return PopScope(
+      canPop: false, // Prevents the user from popping immediately
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        
+        final bool shouldLogout = await _showLogoutConfirmation();
+        
+        if (shouldLogout && mounted) {
+           Utils.currentUser = null;
+           Navigator.pushAndRemoveUntil(
+             context,
+             MaterialPageRoute(builder: (context) => const Startpage()),
+             (route) => false,
+           );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🟢 Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 30,
+                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Hi, Welcome Back,", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 14)),
+                            Text(nickname, style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      // 💰 Clickable real-time Points Display
+                      GestureDetector(
+                        onTap: () => _navigateTo(const PointsPage()),
+                        child: StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: supabase.from('points').stream(primaryKey: ['id']).eq('user_id', userId ?? ''),
+                          builder: (context, snapshot) {
+                            int totalPts = 0;
+                            if (snapshot.hasData) {
+                              totalPts = snapshot.data!.fold(0, (sum, item) => sum + (int.tryParse(item['points_amount'].toString()) ?? 0));
+                            }
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.stars, color: Color(0xFF1392AB), size: 18),
+                                  const SizedBox(width: 4),
+                                  Text("$totalPts pts", style: GoogleFonts.openSans(fontWeight: FontWeight.bold, color: const Color(0xFF1392AB))),
+                                ],
+                              ),
+                            );
                           },
                         ),
                       ),
-                      style: GoogleFonts.openSans(),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              // 🟢 Promotion Slider
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SizedBox(
-                  height: 160,
-                  child: PageView(
-                    controller: _promotionController,
-                    onPageChanged: (index) => setState(() => _currentPromoPage = index),
-                    children: [
-                      buildPromoBanner("5.5 Mega Sale", "Get up to 50% off on selected items!", const Color(0xFF1392AB), 'https://cdn-icons-png.flaticon.com/512/2769/2769257.png'),
-                      buildPromoBanner("Baby Care Promo", "Buy 3 Free 1 on all baby essentials.", Colors.teal.shade400, 'https://cdn-icons-png.flaticon.com/512/2361/2361131.png'),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(2, (index) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _currentPromoPage == index ? const Color(0xFF1392AB) : Colors.grey.shade300,
-                    ),
-                  )),
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              // 🟢 Quick Links
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("Quick Links", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("See All", style: GoogleFonts.openSans(color: Colors.grey.shade600, fontSize: 14)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-              SizedBox(
-                height: 100,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.only(left: 20),
-                  children: [
-                    buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC)),
-                    buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF8DC6BC), onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatBotPage()));
-                    }),
-                    buildCategoryBox("Rewards", Icons.card_giftcard, const Color(0xFF8DC6BC)),
-                    buildCategoryBox("Vouchers", Icons.confirmation_number, const Color(0xFF8DC6BC)),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              // 🟢 All Products (Always static list)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("All Products", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
-                    GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductListPage())),
-                      child: Text("See All", style: GoogleFonts.openSans(color: Colors.grey.shade600, fontSize: 14)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: _initialProductsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final products = snapshot.data ?? [];
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final p = products[index];
-                      return GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: p))),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 15),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(15),
-                                child: Image.network(p['image_url'], width: 80, height: 80, fit: BoxFit.cover),
-                              ),
-                              const SizedBox(width: 15),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(p['name'], style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 5),
-                                    Text("RM ${p['price']}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 5),
-                                    Text(p['category'] ?? "General", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProductDetailsPage(product: p))),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1392AB),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
-                              ),
-                            ],
+      
+                // 🟢 Search Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: CompositedTransformTarget(
+                    link: _layerLink,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: "Search a Product",
+                          hintStyle: GoogleFonts.openSans(),
+                          border: InputBorder.none,
+                          icon: const Icon(Icons.search, color: Colors.grey),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              _removeOverlay();
+                            },
                           ),
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 100),
-            ],
+                        style: GoogleFonts.openSans(),
+                      ),
+                    ),
+                  ),
+                ),
+      
+                const SizedBox(height: 25),
+      
+                // 🟢 Promotion Slider
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SizedBox(
+                    height: 160,
+                    child: PageView(
+                      controller: _promotionController,
+                      onPageChanged: (index) => setState(() => _currentPromoPage = index),
+                      children: [
+                        buildPromoBanner("5.5 Mega Sale", "Get up to 50% off on selected items!", const Color(0xFF1392AB), 'https://cdn-icons-png.flaticon.com/512/2769/2769257.png'),
+                        buildPromoBanner("Baby Care Promo", "Buy 3 Free 1 on all baby essentials.", Colors.teal.shade400, 'https://cdn-icons-png.flaticon.com/512/2361/2361131.png'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(2, (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _currentPromoPage == index ? const Color(0xFF1392AB) : Colors.grey.shade300,
+                      ),
+                    )),
+                  ),
+                ),
+      
+                const SizedBox(height: 25),
+      
+                // 🟢 Quick Links
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Quick Links", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text("See All", style: GoogleFonts.openSans(color: Colors.grey.shade600, fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(left: 20),
+                    children: [
+                      buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC)),
+                      buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF8DC6BC), onTap: () {
+                        _navigateTo(const ChatBotPage());
+                      }),
+                      buildCategoryBox("Rewards", Icons.card_giftcard, const Color(0xFF8DC6BC), onTap: () {
+                         _navigateTo(const RewardsPage());
+                      }),
+                      buildCategoryBox("Vouchers", Icons.confirmation_number, const Color(0xFF8DC6BC), onTap: () {
+                         _navigateTo(const VouchersPage());
+                      }),
+                    ],
+                  ),
+                ),
+      
+                const SizedBox(height: 25),
+      
+                // 🟢 All Products
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("All Products", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                      GestureDetector(
+                        onTap: () => _navigateTo(const ProductListPage()),
+                        child: Text("See All", style: GoogleFonts.openSans(color: Colors.grey.shade600, fontSize: 14)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 15),
+      
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _initialProductsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final products = snapshot.data ?? [];
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final p = products[index];
+                        return GestureDetector(
+                          onTap: () => _navigateTo(ProductDetailsPage(product: p)),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
+                                  child: Image.network(p['image_url'], width: 80, height: 80, fit: BoxFit.cover),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(p['name'], style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 5),
+                                      Text("RM ${p['price']}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 5),
+                                      Text(p['category'] ?? "General", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => _navigateTo(ProductDetailsPage(product: p)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1392AB),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 80,
-        decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            buildNavItem(Icons.home, "Home", true),
-            buildNavItem(Icons.medical_services_outlined, "Medicine", false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductListPage()))),
-            Transform.translate(
-              offset: const Offset(0, -15),
-              child: GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AppointmentHistoryPage())),
-                child: Container(
-                  height: 60,
-                  width: 60,
-                  decoration: const BoxDecoration(color: Color(0xFF1392AB), shape: BoxShape.circle),
-                  child: const Icon(Icons.calendar_month, color: Colors.white, size: 30),
+        bottomNavigationBar: Container(
+          height: 80,
+          decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              buildNavItem(Icons.home, "Home", true),
+              buildNavItem(Icons.medical_services_outlined, "Medicine", false, onTap: () => _navigateTo(const ProductListPage())),
+              Transform.translate(
+                offset: const Offset(0, -15),
+                child: GestureDetector(
+                  onTap: () => _navigateTo(const AppointmentHistoryPage()),
+                  child: Container(
+                    height: 60,
+                    width: 60,
+                    decoration: const BoxDecoration(color: Color(0xFF1392AB), shape: BoxShape.circle),
+                    child: const Icon(Icons.calendar_month, color: Colors.white, size: 30),
+                  ),
                 ),
               ),
-            ),
-            buildNavItem(Icons.receipt_long, "Orders", false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const OrderHistoryPage()))),
-            buildNavItem(Icons.person_outline, "Profile", false, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserProfilePage()))),
-          ],
+              buildNavItem(Icons.receipt_long, "Orders", false, onTap: () => _navigateTo(const OrderHistoryPage())),
+              buildNavItem(Icons.person_outline, "Profile", false, onTap: () => _navigateTo(const UserProfilePage())),
+            ],
+          ),
         ),
       ),
     );

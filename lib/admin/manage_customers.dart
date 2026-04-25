@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class ManageCustomersPage extends StatefulWidget {
   const ManageCustomersPage({super.key});
@@ -20,74 +21,98 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: supabase.from('users_profile').stream(primaryKey: ['id']),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchCustomersWithPoints(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final customers = snapshot.data ?? [];
 
-          return ListView.builder(
-            itemCount: customers.length,
-            padding: const EdgeInsets.all(10),
-            itemBuilder: (context, index) {
-              final customer = customers[index];
-              return Card(
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.person)),
-                  title: Text(customer['nickname'] ?? 'User'),
-                  subtitle: Text(customer['email']),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteCustomer(customer['id']),
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                const Text("Customer Loyalty (Points)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
+                
+                // 📊 CHART FIX
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SizedBox(
+                    height: 200,
+                    child: BarChart(
+                      BarChartData(
+                        barGroups: customers.asMap().entries.map((e) {
+                          return BarChartGroupData(x: e.key, barRods: [
+                            BarChartRodData(toY: (e.value['total_points'] ?? 0).toDouble(), color: Colors.purple, width: 15)
+                          ]);
+                        }).toList(),
+                        titlesData: FlTitlesData(show: false),
+                        borderData: FlBorderData(show: false),
+                        gridData: FlGridData(show: false),
+                      ),
+                    ),
                   ),
-                  onTap: () => _showCustomerDetails(customer),
                 ),
-              );
-            },
+
+                const Divider(height: 40),
+
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: customers.length,
+                  padding: const EdgeInsets.all(10),
+                  itemBuilder: (context, index) {
+                    final customer = customers[index];
+                    bool isSuspended = customer['is_suspended'] ?? false;
+
+                    return Card(
+                      color: isSuspended ? Colors.red.shade50 : Colors.white,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isSuspended ? Colors.red : Colors.purple,
+                          child: const Icon(Icons.person, color: Colors.white),
+                        ),
+                        title: Text(customer['nickname'] ?? 'User', style: TextStyle(fontWeight: FontWeight.bold, decoration: isSuspended ? TextDecoration.lineThrough : null)),
+                        subtitle: Text("${customer['email']}\nPoints: ${customer['total_points'] ?? 0} pts"),
+                        isThreeLine: true,
+                        trailing: ElevatedButton(
+                          onPressed: () => _toggleSuspension(customer['id'], isSuspended),
+                          style: ElevatedButton.styleFrom(backgroundColor: isSuspended ? Colors.green : Colors.red),
+                          child: Text(isSuspended ? "Unsuspend" : "Suspend", style: const TextStyle(color: Colors.white, fontSize: 10)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  void _deleteCustomer(String id) async {
-    bool confirm = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Customer?"),
-        content: const Text("This action cannot be undone."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
+  Future<List<Map<String, dynamic>>> _fetchCustomersWithPoints() async {
+    final users = await supabase.from('users_profile').select();
+    final pointsData = await supabase.from('points').select();
 
-    if (confirm == true) {
-      await supabase.from('users_profile').delete().eq('id', id);
-      if (mounted) Utils.snackbar(context, "Customer deleted");
+    List<Map<String, dynamic>> results = [];
+    for (var user in users) {
+      int total = 0;
+      for (var p in pointsData) {
+        if (p['user_id'] == user['id']) {
+          total += (p['points_amount'] as int);
+        }
+      }
+      user['total_points'] = total;
+      results.add(user);
     }
+    return results;
   }
 
-  void _showCustomerDetails(Map<String, dynamic> customer) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Customer Details", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const Divider(),
-            Text("ID: ${customer['id']}"),
-            Text("Name: ${customer['nickname']}"),
-            Text("Email: ${customer['email']}"),
-            Text("Address: ${customer['address'] ?? 'Not set'}"),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
+  void _toggleSuspension(String id, bool currentStatus) async {
+    await supabase.from('users_profile').update({'is_suspended': !currentStatus}).eq('id', id);
+    setState(() {});
+    Utils.snackbar(context, currentStatus ? "Account Restored" : "Account Suspended", color: currentStatus ? Colors.green : Colors.red);
   }
 }

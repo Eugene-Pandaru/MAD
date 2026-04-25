@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/editprofile.dart';
 import 'package:mad/footer.dart';
-import 'package:mad/login.dart';
+import 'package:mad/startpage.dart';
 import 'package:mad/orderhistory.dart';
 import 'package:mad/points.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
+import 'package:mad/redemption.dart'; // 👈 Import Redemption
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -25,7 +26,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 🟢 Header (Matching home style)
+            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -91,10 +92,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       icon: Icons.edit_outlined,
                       title: "Edit Profile",
                       onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                        );
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
                         setState(() {});
                       },
                     ),
@@ -102,30 +100,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       icon: Icons.receipt_long_outlined,
                       title: "My Orders",
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const OrderHistoryPage()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const OrderHistoryPage()));
+                      },
+                    ),
+                    _buildProfileItem(
+                      icon: Icons.redeem_outlined, // 👈 New Redemption Item
+                      title: "Redemption",
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const RedemptionPage()));
                       },
                     ),
                     _buildProfileItem(
                       icon: Icons.confirmation_number_outlined,
                       title: "My Vouchers",
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const VouchersPage()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const VouchersPage()));
                       },
                     ),
                     _buildProfileItem(
                       icon: Icons.stars_outlined,
                       title: "My Points",
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const PointsPage()),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const PointsPage()));
                       },
                     ),
                     const Divider(height: 40),
@@ -138,7 +134,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         Utils.currentUser = null;
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const LoginPage()),
+                          MaterialPageRoute(builder: (context) => const Startpage()),
                           (route) => false,
                         );
                       },

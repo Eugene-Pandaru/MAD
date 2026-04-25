@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -24,6 +25,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool obscureCurrent = true;
   bool obscureNew = true;
   bool obscureConfirm = true;
+  bool isSaving = false;
+  XFile? pickedImage;
 
   @override
   void initState() {
@@ -79,6 +82,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = Utils.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -111,9 +116,49 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// 📧 Email (Read Only)
+                      /// 🖼️ Profile Picture Upload Section
+                      Center(
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.grey.shade100,
+                              backgroundImage: pickedImage != null 
+                                ? AssetImage('assets/${pickedImage!.name}') as ImageProvider
+                                : (user?['profile_url'] != null 
+                                    ? AssetImage('assets/${user!['profile_url']}')
+                                    : null),
+                              child: (pickedImage == null && user?['profile_url'] == null)
+                                  ? const Icon(Icons.person, size: 50, color: Color(0xFF1392AB))
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final picker = ImagePicker();
+                                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                                  if (image != null) {
+                                    setState(() {
+                                      pickedImage = image;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: const BoxDecoration(color: Color(0xFF1392AB), shape: BoxShape.circle),
+                                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      /// 👤 Fields
                       TextFormField(
                         controller: emailController,
                         enabled: false,
@@ -125,21 +170,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       const SizedBox(height: 20),
 
-                      /// 👤 Nickname
                       TextFormField(
                         controller: nicknameController,
                         style: GoogleFonts.openSans(),
                         decoration: inputDecoration("Nickname"),
                         validator: (value) {
                           if (value == null || value.isEmpty) return "Please enter nickname";
+                          if (value.length < 3) return "Nickname must be at least 3 characters";
                           return null;
                         },
                       ),
                       const SizedBox(height: 30),
 
-                      Text(
-                        "Security Settings",
-                        style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Change Password",
+                          style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
                       const Divider(height: 30),
 
@@ -150,7 +198,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
                         validator: (value) {
                           if (value != null && value.isNotEmpty) {
-                            if (value != Utils.currentUser?['password']) return "Incorrect current password";
+                            if (value != user?['password']) return "Incorrect current password";
                           }
                           return null;
                         },
@@ -162,6 +210,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         label: "New Password",
                         obscureText: obscureNew,
                         onToggle: () => setState(() => obscureNew = !obscureNew),
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty) {
+                            if (value.length < 6) return "Min 6 characters required";
+                            if (value == currentPasswordController.text) return "New Password cannot same as current Password";
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 15),
 
@@ -185,19 +240,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         width: double.infinity,
                         height: 55,
                         child: ElevatedButton(
-                          onPressed: () async {
+                          onPressed: isSaving ? null : () async {
                             if (_formKey.currentState!.validate()) {
+                              setState(() => isSaving = true);
                               try {
-                                final userId = Utils.currentUser?['id'];
-                                final Map<String, dynamic> updateData = {'nickname': nicknameController.text};
-                                if (newPasswordController.text.isNotEmpty) updateData['password'] = newPasswordController.text;
+                                final userId = user?['id'];
+                                final Map<String, dynamic> updateData = {
+                                  'nickname': nicknameController.text,
+                                };
+                                
+                                // If a new image was picked, record its name
+                                if (pickedImage != null) {
+                                  updateData['profile_url'] = pickedImage!.name;
+                                }
+
+                                // If new password was entered, update it
+                                if (newPasswordController.text.isNotEmpty) {
+                                  updateData['password'] = newPasswordController.text;
+                                }
 
                                 final response = await supabase.from('users_profile').update(updateData).eq('id', userId).select().single();
                                 Utils.currentUser = response;
-                                Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
-                                Navigator.pop(context);
+                                
+                                if (mounted) {
+                                  Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
+                                  Navigator.pop(context);
+                                }
                               } catch (e) {
-                                Utils.snackbar(context, "Update failed", color: Colors.red);
+                                if (mounted) Utils.snackbar(context, "Update failed: ${e.toString()}", color: Colors.red);
+                              } finally {
+                                if (mounted) setState(() => isSaving = false);
                               }
                             }
                           },
@@ -205,9 +277,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             backgroundColor: const Color(0xFF1392AB),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           ),
-                          child: Text("Save Changes", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          child: isSaving 
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text("Save Changes", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                         ),
                       ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

@@ -10,10 +10,11 @@ class PaymentPage extends StatefulWidget {
   final double subtotal;
   final double deliveryFee;
   final String deliveryAddress;
-  final String paymentType; // "medicine" or "appointment"
+  final String paymentType;
   final String? pharmacistName;
   final String? apptDate;
   final String? apptTime;
+  final String? voucherCode; // 👈 Add this
 
   const PaymentPage({
     super.key,
@@ -24,6 +25,7 @@ class PaymentPage extends StatefulWidget {
     this.pharmacistName,
     this.apptDate,
     this.apptTime,
+    this.voucherCode, // 👈
   });
 
   @override
@@ -61,11 +63,9 @@ class _PaymentPageState extends State<PaymentPage> {
       else if (mainMethod == "E-wallet") finalMethodLabel = "E-wallet - $selectedWallet";
       else finalMethodLabel = "Card";
 
-      // 💳 Simulate Stripe (Optional)
       await createIncompleteStripeRecord(
           (totalAmount * 100).toInt().toString(), 'MYR', finalMethodLabel);
 
-      // 💾 Save to Database with REAL User ID
       if (widget.paymentType == "medicine") {
         await _saveOrderToDatabase(finalMethodLabel);
       } else {
@@ -104,7 +104,6 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _saveOrderToDatabase(String method) async {
-    // ✅ Uses real user ID and nickname from the login session
     await Supabase.instance.client.from('orders').insert({
       'user_id': Utils.currentUser?['id'],
       'user_name': Utils.currentUser?['nickname'] ?? 'Guest',
@@ -114,6 +113,7 @@ class _PaymentPageState extends State<PaymentPage> {
       'status': 'Paid',
       'payment_method': method,
       'delivery_status': 'PENDING',
+      'voucher_code': widget.voucherCode, // 👈 Save the code
       'items': CartManager.cartItems.map((item) => {
         'name': item.name,
         'price': item.price,
@@ -124,9 +124,8 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _saveAppointmentToDatabase(String method) async {
-    // ✅ Uses real user ID and nickname from the login session
     await Supabase.instance.client.from('appointments').insert({
-      'user_id': Utils.currentUser?['id'], 
+      'user_id': Utils.currentUser?['id'],
       'user_name': Utils.currentUser?['nickname'] ?? 'Guest',
       'pharmacist_name': widget.pharmacistName,
       'appointment_date': widget.apptDate,

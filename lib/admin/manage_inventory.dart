@@ -15,7 +15,7 @@ class _ManageInventoryPageState extends State<ManageInventoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Inventory Management"), backgroundColor: Colors.orange, foregroundColor: Colors.white),
+      appBar: AppBar(title: const Text("Inventory Tracking"), backgroundColor: Colors.orange, foregroundColor: Colors.white),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase.from('products').stream(primaryKey: ['id']),
         builder: (context, snapshot) {
@@ -28,30 +28,29 @@ class _ManageInventoryPageState extends State<ManageInventoryPage> {
             itemBuilder: (context, index) {
               final product = items[index];
               int stock = product['stock_quantity'] ?? 0;
+              String expiry = product['expiry_date'] ?? "N/A";
               bool isLow = stock <= 10;
 
               return Card(
                 child: ListTile(
                   title: Text(product['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Expiry: ${product['expiry_date'] ?? 'N/A'}"),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Current Stock: $stock"),
+                      Text("Expiry Date: $expiry", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isLow ? Colors.red : Colors.green,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text("Stock: $stock", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Colors.green, size: 30),
+                        onPressed: () => _showStockOverlay(context, product, true),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.blue),
-                        onPressed: () => _adjustStock(product['id'], stock, 10),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle, color: Colors.red),
-                        onPressed: () => _adjustStock(product['id'], stock, -10),
+                        icon: const Icon(Icons.remove_circle, color: Colors.red, size: 30),
+                        onPressed: () => _showStockOverlay(context, product, false),
                       ),
                     ],
                   ),
@@ -64,10 +63,37 @@ class _ManageInventoryPageState extends State<ManageInventoryPage> {
     );
   }
 
-  void _adjustStock(String id, int current, int delta) async {
-    int newStock = current + delta;
-    if (newStock < 0) newStock = 0;
-    await supabase.from('products').update({'stock_quantity': newStock}).eq('id', id);
-    Utils.snackbar(context, "Stock updated to $newStock");
+  void _showStockOverlay(BuildContext context, Map<String, dynamic> product, bool isAdd) {
+    final amountController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isAdd ? "Add Stock" : "Remove Stock"),
+        content: TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: isAdd ? "Add amount +" : "Remove amount -",
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              int delta = int.tryParse(amountController.text) ?? 0;
+              if (!isAdd) delta = -delta;
+              int newStock = (product['stock_quantity'] ?? 0) + delta;
+              if (newStock < 0) newStock = 0;
+
+              await supabase.from('products').update({'stock_quantity': newStock}).eq('id', product['id']);
+              Navigator.pop(context);
+              Utils.snackbar(context, "Stock Updated");
+            },
+            child: const Text("Confirm"),
+          ),
+        ],
+      ),
+    );
   }
 }

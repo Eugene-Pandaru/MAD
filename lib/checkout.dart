@@ -4,6 +4,8 @@ import 'package:mad/cartmanager.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/paymentpage.dart';
 import 'package:mad/addresspage.dart';
+import 'package:mad/utility.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -13,14 +15,38 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  final supabase = Supabase.instance.client;
   String deliveryAddress = "123, Jalan Pharmacy, Taman NoSakit, 56000 Kuala Lumpur";
   String selectedShipping = "Standard";
   double shippingFee = 5.00;
 
+  // Voucher Selection State
+  Map<String, dynamic>? selectedShippingVoucher;
+  Map<String, dynamic>? selectedDiscountVoucher;
+
   @override
   Widget build(BuildContext context) {
     double subtotal = CartManager.getTotalPrice();
-    double total = subtotal + shippingFee;
+    
+    // Calculate effective shipping fee
+    double effectiveShippingFee = shippingFee;
+    if (selectedShippingVoucher != null) {
+      double discount = double.tryParse(selectedShippingVoucher!['discount_amount']?.toString() ?? '0') ?? 0;
+      effectiveShippingFee = (shippingFee - discount).clamp(0, double.infinity);
+    }
+
+    // Calculate effective discount
+    double discountAmount = 0;
+    if (selectedDiscountVoucher != null) {
+      double amt = double.tryParse(selectedDiscountVoucher!['discount_amount']?.toString() ?? '0') ?? 0;
+      if (selectedDiscountVoucher!['discount_type'] == 'PERCENTAGE') {
+        discountAmount = subtotal * (amt / 100);
+      } else {
+        discountAmount = amt;
+      }
+    }
+
+    double total = (subtotal - discountAmount + effectiveShippingFee).clamp(0, double.infinity);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -29,7 +55,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🟢 Header (Matching home/productlist style)
+              // 🟢 Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 child: Row(
@@ -56,8 +82,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     /// 1. Delivery Address Section
-                    Text("Delivery Address",
-                        style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text("Delivery Address", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(15),
@@ -71,35 +96,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           const Icon(Icons.location_on, color: Color(0xFF1392AB)),
                           const SizedBox(width: 15),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  deliveryAddress,
-                                  style: GoogleFonts.openSans(fontSize: 14, color: Colors.black87),
-                                ),
-                              ],
-                            ),
+                            child: Text(deliveryAddress, style: GoogleFonts.openSans(fontSize: 14, color: Colors.black87)),
                           ),
                           TextButton(
                             onPressed: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => AddressPage()),
-                              );
-                              if (result != null && result is String) {
-                                setState(() {
-                                  deliveryAddress = result;
-                                });
-                              }
+                              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressPage()));
+                              if (result != null && result is String) setState(() => deliveryAddress = result);
                             },
-                            child: Text(
-                              "Change",
-                              style: GoogleFonts.openSans(
-                                color: const Color(0xFF1392AB),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: Text("Change", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
                           )
                         ],
                       ),
@@ -108,29 +112,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const SizedBox(height: 25),
 
                     /// 2. Order Summary
-                    Text("Order Summary",
-                        style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text("Order Summary", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
+                      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
                       child: Column(
                         children: CartManager.cartItems.map((item) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                "${item.quantity}x ${item.name}",
-                                style: GoogleFonts.openSans(fontSize: 14),
-                              ),
-                              Text(
-                                "RM ${(item.price * item.quantity).toStringAsFixed(2)}",
-                                style: GoogleFonts.openSans(fontSize: 14, fontWeight: FontWeight.w600),
-                              ),
+                              Text("${item.quantity}x ${item.name}", style: GoogleFonts.openSans(fontSize: 14)),
+                              Text("RM ${(item.price * item.quantity).toStringAsFixed(2)}", style: GoogleFonts.openSans(fontSize: 14, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         )).toList(),
@@ -139,45 +133,47 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     const SizedBox(height: 25),
 
-                    /// 3. Shipping Options
-                    Text("Shipping Method",
-                        style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                    /// 3. Voucher Selection Section (NEW)
+                    Text("Apply Vouchers", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        children: [
-                          RadioListTile<String>(
-                            activeColor: const Color(0xFF1392AB),
-                            title: Text("Standard Delivery", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
-                            subtitle: Text("3-5 Days • RM 5.00", style: GoogleFonts.openSans(fontSize: 12)),
-                            value: "Standard",
-                            groupValue: selectedShipping,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedShipping = value!;
-                                shippingFee = 5.00;
-                              });
-                            },
-                          ),
-                          RadioListTile<String>(
-                            activeColor: const Color(0xFF1392AB),
-                            title: Text("Express Delivery", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
-                            subtitle: Text("Next Day • RM 12.00", style: GoogleFonts.openSans(fontSize: 12)),
-                            value: "Express",
-                            groupValue: selectedShipping,
-                            onChanged: (value) {
-                              setState(() {
-                                selectedShipping = value!;
-                                shippingFee = 12.00;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: supabase.from('vouchers').stream(primaryKey: ['id']),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const LinearProgressIndicator();
+                        final vouchers = snapshot.data!;
+                        
+                        return Column(
+                          children: vouchers.map((v) {
+                            bool isShipping = v['category'] == 'SHIPPING';
+                            bool isSelected = (isShipping && selectedShippingVoucher?['id'] == v['id']) ||
+                                             (!isShipping && selectedDiscountVoucher?['id'] == v['id']);
+                            
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF1392AB).withValues(alpha: 0.1) : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: isSelected ? const Color(0xFF1392AB) : Colors.grey.shade200),
+                              ),
+                              child: ListTile(
+                                leading: Icon(isShipping ? Icons.local_shipping : Icons.confirmation_number, color: isSelected ? const Color(0xFF1392AB) : Colors.grey),
+                                title: Text(v['code'] ?? "VOUCHER", style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 14)),
+                                subtitle: Text(v['description'] ?? "", style: GoogleFonts.openSans(fontSize: 12)),
+                                trailing: Icon(isSelected ? Icons.check_circle : Icons.circle_outlined, color: isSelected ? const Color(0xFF1392AB) : Colors.grey),
+                                onTap: () {
+                                  setState(() {
+                                    if (isShipping) {
+                                      selectedShippingVoucher = (selectedShippingVoucher?['id'] == v['id']) ? null : v;
+                                    } else {
+                                      selectedDiscountVoucher = (selectedDiscountVoucher?['id'] == v['id']) ? null : v;
+                                    }
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 25),
@@ -193,7 +189,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: Column(
                         children: [
                           buildPriceRow("Subtotal", subtotal),
-                          buildPriceRow("Shipping Fee", shippingFee),
+                          if (discountAmount > 0) buildPriceRow("Discount", -discountAmount, isDiscount: true),
+                          buildPriceRow("Shipping Fee", effectiveShippingFee),
                           const Divider(height: 30),
                           buildPriceRow("Total Payment", total, isTotal: true),
                         ],
@@ -213,26 +210,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           elevation: 0,
                         ),
                         onPressed: () {
+                          // Combine voucher codes for the order
+                          String? combinedCodes;
+                          if (selectedShippingVoucher != null && selectedDiscountVoucher != null) {
+                            combinedCodes = "${selectedShippingVoucher!['code']}, ${selectedDiscountVoucher!['code']}";
+                          } else {
+                            combinedCodes = selectedShippingVoucher?['code'] ?? selectedDiscountVoucher?['code'];
+                          }
+
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => PaymentPage(
-                                subtotal: subtotal,
-                                deliveryFee: shippingFee,
+                                subtotal: subtotal - discountAmount,
+                                deliveryFee: effectiveShippingFee,
                                 deliveryAddress: deliveryAddress,
                                 paymentType: "medicine",
+                                voucherCode: combinedCodes, // 👈 Pass to payment
                               ),
                             ),
                           );
                         },
-                        child: Text(
-                          "Proceed to Payment",
-                          style: GoogleFonts.openSans(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text("Proceed to Payment", style: GoogleFonts.openSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -247,21 +246,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget buildPriceRow(String label, double price, {bool isTotal = false}) {
+  Widget buildPriceRow(String label, double price, {bool isTotal = false, bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.openSans(
+          Text(label, style: GoogleFonts.openSans(fontSize: isTotal ? 18 : 14, fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            isDiscount ? "- RM ${(-price).toStringAsFixed(2)}" : "RM ${price.toStringAsFixed(2)}",
+            style: GoogleFonts.openSans(
               fontSize: isTotal ? 18 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal
-          )),
-          Text("RM ${price.toStringAsFixed(2)}", style: GoogleFonts.openSans(
-              fontSize: isTotal ? 18 : 14,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.bold,
-              color: isTotal ? const Color(0xFF1392AB) : Colors.black
-          )),
+              fontWeight: FontWeight.bold,
+              color: isTotal ? const Color(0xFF1392AB) : (isDiscount ? Colors.green : Colors.black),
+            ),
+          ),
         ],
       ),
     );
