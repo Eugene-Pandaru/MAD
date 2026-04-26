@@ -103,8 +103,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
     }
 
     try {
-      // Ensure we pass user_id correctly. If your column is UUID, this works. 
-      // If it's int, you might need to parse it.
       await supabase.from('exercise_records').insert({
         'user_id': userId,
         'date': DateTime.now().toIso8601String(),
@@ -118,7 +116,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
       if (mounted) {
         Utils.snackbar(
           context, 
-          "Failed to record exercise. Please ensure the 'exercise_records' table exists in Supabase.", 
+          "Failed to record exercise: $e",
           color: Colors.red
         );
       }
