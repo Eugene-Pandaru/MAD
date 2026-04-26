@@ -149,27 +149,42 @@ class _HealthDashboardState extends State<HealthDashboard> {
       if (mounted) Utils.snackbar(context, "Exercise recorded!", color: Colors.green);
     } catch (e) {
       debugPrint("DEBUG: Exercise insert failed. Error: $e");
-      if (mounted) Utils.snackbar(context, "Failed: Check user_id type in Supabase", color: Colors.red);
+      if (mounted) Utils.snackbar(context, "Failed to record exercise.", color: Colors.red);
     }
   }
 
   void _showGoalDialog() {
     final controller = TextEditingController(text: _targetHours.toString());
+    final formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text("Set Weekly Target", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "Target hours per week"),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: "Target hours per week",
+              hintText: "e.g. 10.0",
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) return "Please enter a target";
+              final val = double.tryParse(value);
+              if (val == null) return "Enter a valid number";
+              if (val <= 0) return "Target must be positive";
+              return null;
+            },
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              final val = double.tryParse(controller.text);
-              if (val != null && val > 0) {
+              if (formKey.currentState!.validate()) {
+                final val = double.parse(controller.text);
                 _updateTargetGoal(val);
                 Navigator.pop(ctx);
               }
@@ -184,21 +199,37 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   void _showExerciseDialog() {
     final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text("Exercise Check-in", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: "Hours exercised today"),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: "Hours exercised today",
+              hintText: "e.g. 1.5",
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) return "Please enter hours";
+              final hours = double.tryParse(value);
+              if (hours == null) return "Enter a valid number (e.g. 1.5)";
+              if (hours <= 0) return "Hours must be greater than zero";
+              if (hours > 24) return "Value seems too high for a day";
+              return null;
+            },
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              final hours = double.tryParse(controller.text);
-              if (hours != null && hours > 0) {
+              if (formKey.currentState!.validate()) {
+                final hours = double.parse(controller.text);
                 _addExercise(hours);
                 Navigator.pop(ctx);
               }

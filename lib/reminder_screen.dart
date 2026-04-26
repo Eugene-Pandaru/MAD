@@ -5,6 +5,7 @@ import 'package:mad/utility.dart';
 import 'package:mad/notification_service.dart';
 import 'reminder_model.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class ReminderScreen extends StatefulWidget {
   const ReminderScreen({super.key});
@@ -107,7 +108,6 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   bool _isValidDosage(String value) {
     if (value.isEmpty) return false;
-    // Check if it contains at least one digit
     return RegExp(r'\d').hasMatch(value);
   }
 
@@ -266,14 +266,15 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    // Use KL Timezone for validation as requested
+    final now = tz.TZDateTime.now(tz.local);
     final DateFormat format = DateFormat.jm();
 
     final missed = _reminders.where((r) {
       if (r.isTaken) return false;
       try {
         final DateTime parsedTime = format.parse(r.time);
-        final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+        final scheduledTimeToday = tz.TZDateTime(tz.local, now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
         return now.isAfter(scheduledTimeToday);
       } catch (e) {
         return false;
@@ -284,7 +285,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
       if (r.isTaken) return false;
       try {
         final DateTime parsedTime = format.parse(r.time);
-        final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+        final scheduledTimeToday = tz.TZDateTime(tz.local, now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
         return !now.isAfter(scheduledTimeToday);
       } catch (e) {
         return true;
