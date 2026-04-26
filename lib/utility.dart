@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io'; // 👈 Added for File class
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,10 +30,10 @@ class Utils {
           ),
         ),
         backgroundColor: color,
-        behavior: SnackBarBehavior.floating, // 👈 Floating behavior
-        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20), // 👈 Space from bottom/left/right
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15), // 👈 Curved borders
+          borderRadius: BorderRadius.circular(15),
         ),
         duration: const Duration(seconds: 3),
       ),
@@ -56,31 +56,23 @@ class Utils {
 
   /// 🖼️ Upload Image to Supabase Storage
   static Future<String?> uploadImage({
-    required File file,
+    required File file, // 👈 Uses File from dart:io
     required String bucket,
     required String fileName,
   }) async {
     try {
       final supabase = Supabase.instance.client;
 
-      // Upload the file
       final String path = await supabase.storage.from(bucket).upload(
         fileName,
         file,
         fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
       );
 
-      debugPrint("Upload Success: $path");
-
-      // Return the public URL
       return supabase.storage.from(bucket).getPublicUrl(fileName);
-    } on StorageException catch (e) {
-      debugPrint("Supabase Storage Error: ${e.message}");
-      return null;
     } catch (e) {
-      debugPrint("Unexpected Upload Error: $e");
+      debugPrint("Upload Error: $e");
       return null;
     }
   }
 }
-

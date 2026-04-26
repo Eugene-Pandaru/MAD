@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mad/cartmanager.dart'; // Import the manager
+import 'package:mad/cartmanager.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'checkout.dart';
 
@@ -14,6 +15,7 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
+  final supabase = Supabase.instance.client;
 
   // Function to show the removal confirmation dialog
   void _showRemoveDialog(int index) {
@@ -35,7 +37,6 @@ class _CartPageState extends State<CartPage> {
                   CartManager.cartItems.removeAt(index);
                 });
                 Navigator.pop(context);
-                // 🛠️ Updated to use modern floating snackbar from Utils
                 Utils.snackbar(context, "Item removed", color: Colors.red);
               },
               child: Text("Remove", style: GoogleFonts.openSans(color: Colors.red, fontWeight: FontWeight.bold)),
@@ -44,6 +45,36 @@ class _CartPageState extends State<CartPage> {
         );
       },
     );
+  }
+
+  // 🔍 Function to check stock from database before adding quantity
+  Future<void> _increaseQuantity(int index) async {
+    final item = CartManager.cartItems[index];
+    
+    try {
+      // Fetch current stock from database
+      final response = await supabase
+          .from('products')
+          .select('stock_quantity')
+          .eq('name', item.name)
+          .single();
+      
+      final int stock = response['stock_quantity'] ?? 0;
+
+      if (item.quantity < stock) {
+        setState(() {
+          item.quantity++;
+        });
+      } else {
+        if (mounted) {
+          Utils.snackbar(context, "Not enough stock available", color: Colors.red);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Utils.snackbar(context, "Error checking stock: $e", color: Colors.red);
+      }
+    }
   }
 
   @override
@@ -142,11 +173,7 @@ class _CartPageState extends State<CartPage> {
                                   // PLUS BUTTON
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline, color: Color(0xFF1392AB)),
-                                    onPressed: () {
-                                      setState(() {
-                                        item.quantity++;
-                                      });
-                                    },
+                                    onPressed: () => _increaseQuantity(index), // 👈 Updated to check database
                                   ),
                                 ],
                               ),

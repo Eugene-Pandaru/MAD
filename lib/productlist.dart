@@ -184,6 +184,12 @@ class _ProductListPageState extends State<ProductListPage> {
 
                             final item = allProducts[index];
                             double price = double.tryParse(item['price'].toString()) ?? 0.0;
+                            int stock = item['stock_quantity'] ?? 0;
+
+                            // 🛒 Calculate how many of this product are already in the cart
+                            int cartIndex = CartManager.cartItems.indexWhere((i) => i.name == item['name']);
+                            int cartQuantity = cartIndex != -1 ? CartManager.cartItems[cartIndex].quantity : 0;
+
                             return InkWell(
                               onTap: () {
                                 Navigator.push(
@@ -244,21 +250,41 @@ class _ProductListPageState extends State<ProductListPage> {
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                              // 🟢 Updated "+" Button
+                                              // 🟢 Updated "+" Button with Stock and Cart Check
                                               GestureDetector(
                                                 onTap: () {
+                                                  // 🛡️ CHECK STOCK AND CART LIMIT BEFORE ADDING
+                                                  if (stock <= 0) {
+                                                    Utils.snackbar(
+                                                      context, 
+                                                      "Item Not Available Now", 
+                                                      color: Colors.red
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  if ((cartQuantity + 1) > stock) {
+                                                    Utils.snackbar(
+                                                      context, 
+                                                      "Not enough stock", 
+                                                      color: Colors.red
+                                                    );
+                                                    return;
+                                                  }
+
                                                   CartManager.addToCart(item);
-                                                  // ✅ FIXED: Using modern floating snackbar
                                                   Utils.snackbar(
                                                     context, 
                                                     "Successfully added into cart",
-                                                      color: Colors.green // 👈 Changed to green
+                                                    color: Colors.green
                                                   );
+                                                  // Force rebuild to update cartQuantity local variable for immediate feedback
+                                                  setState(() {});
                                                 },
                                                 child: Container(
                                                   padding: const EdgeInsets.all(5),
-                                                  decoration: const BoxDecoration(
-                                                    color: Color(0xFF1392AB),
+                                                  decoration: BoxDecoration(
+                                                    color: (stock - cartQuantity) > 0 ? const Color(0xFF1392AB) : Colors.grey,
                                                     shape: BoxShape.circle,
                                                   ),
                                                   child: const Icon(

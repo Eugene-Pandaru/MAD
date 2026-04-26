@@ -112,7 +112,7 @@ class _PaymentPageState extends State<PaymentPage> {
       'delivery_address': widget.deliveryAddress,
       'status': 'Paid',
       'payment_method': method,
-      'delivery_status': 'PENDING',
+      'delivery_status': 'REQUESTING',
       'voucher_code': widget.voucherCode, // 👈 Save the code
       'items': CartManager.cartItems.map((item) => {
         'name': item.name,
