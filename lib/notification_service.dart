@@ -1,5 +1,3 @@
-///kh
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -30,8 +28,11 @@ class NotificationService {
       tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10)), // 10s delay
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'med_channel', 'Medicine Alarms',
-          importance: Importance.max, priority: Priority.high,
+          'med_channel', 
+          'Medicine Alarms',
+          channelDescription: 'Channel for Medicine Reminders',
+          importance: Importance.max, 
+          priority: Priority.high,
           playSound: true,
         ),
       ),

@@ -4,7 +4,8 @@ import 'package:mad/userprofile.dart';
 import 'package:mad/points.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/rewards.dart';
-import 'package:mad/startpage.dart'; // 👈 Added Import
+import 'package:mad/startpage.dart';
+import 'package:mad/pharmacy_map_screen.dart'; // 👈 Import Map
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orderhistory.dart';
@@ -131,13 +132,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 🔄 Refresh the Home Page state whenever we return from another screen
   Future<void> _navigateTo(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => page));
     if (mounted) setState(() {}); 
   }
 
-  /// 🛡️ Logout Confirmation Dialog
   Future<bool> _showLogoutConfirmation() async {
     return await showDialog(
       context: context,
@@ -166,19 +165,13 @@ class _HomePageState extends State<HomePage> {
     final userId = Utils.currentUser?['id'];
 
     return PopScope(
-      canPop: false, // Prevents the user from popping immediately
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
-        
         final bool shouldLogout = await _showLogoutConfirmation();
-        
         if (shouldLogout && mounted) {
            Utils.currentUser = null;
-           Navigator.pushAndRemoveUntil(
-             context,
-             MaterialPageRoute(builder: (context) => const Startpage()),
-             (route) => false,
-           );
+           Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Startpage()), (route) => false);
         }
       },
       child: Scaffold(
@@ -188,7 +181,6 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🟢 Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
@@ -207,7 +199,6 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
-                      // 💰 Clickable real-time Points Display
                       GestureDetector(
                         onTap: () => _navigateTo(const PointsPage()),
                         child: StreamBuilder<List<Map<String, dynamic>>>(
@@ -238,7 +229,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
       
-                // 🟢 Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: CompositedTransformTarget(
@@ -272,7 +262,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 Promotion Slider
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SizedBox(
@@ -305,7 +294,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 Quick Links
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -323,7 +311,9 @@ class _HomePageState extends State<HomePage> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(left: 20),
                     children: [
-                      buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC)),
+                      buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC), onTap: () {
+                         _navigateTo(const PharmacyMapScreen()); // 👈 Link to Map
+                      }),
                       buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF8DC6BC), onTap: () {
                         _navigateTo(const ChatBotPage());
                       }),
@@ -339,7 +329,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 All Products
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(

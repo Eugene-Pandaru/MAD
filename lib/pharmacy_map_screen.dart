@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mad/utility.dart';
 
 class PharmacyMapScreen extends StatefulWidget {
   const PharmacyMapScreen({super.key});
@@ -11,67 +13,49 @@ class PharmacyMapScreen extends StatefulWidget {
 }
 
 class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
+  final supabase = Supabase.instance.client;
   final MapController _mapController = MapController();
-  LatLng _userLocation = const LatLng(3.2165, 101.7290); // Default to TAR UMT area
+  
+  // Center of Malaysia/KL
+  final LatLng _center = const LatLng(3.1390, 101.6869);
+  List<Marker> _markers = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _getUserLocation();
+    _fetchPharmacyLocations();
   }
 
-  // GPS Logic: Get User current location
-  Future<void> _getUserLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location services are disabled.")),
-        );
-      }
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Location permissions are denied.")),
-          );
-        }
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location permissions are permanently denied.")),
-        );
-      }
-      return;
-    }
-
+  Future<void> _fetchPharmacyLocations() async {
     try {
-      Position position = await Geolocator.getCurrentPosition();
-      if (!mounted) return;
+      final data = await supabase.from('location').select();
+      final List<Map<String, dynamic>> locations = List<Map<String, dynamic>>.from(data);
 
-      setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
-        _isLoading = false;
-      });
-
-      // Move map to user location
-      _mapController.move(_userLocation, 15.0);
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error getting location: $e")),
-        );
+        setState(() {
+          _markers = locations.map((loc) {
+            return Marker(
+              point: LatLng(
+                double.parse(loc['latitude'].toString()),
+                double.parse(loc['longitude'].toString()),
+              ),
+              width: 50,
+              height: 50,
+              child: GestureDetector(
+                onTap: () {
+                  Utils.snackbar(context, "${loc['name']}\n${loc['address']}", color: const Color(0xFF1392AB));
+                },
+                child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+              ),
+            );
+          }).toList();
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      debugPrint("Error: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -79,67 +63,31 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Nearby Pharmacy & Tracking"),
-        backgroundColor: Colors.blueAccent,
+        title: Text("Our Branches", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF1392AB),
         foregroundColor: Colors.white,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1392AB)))
           : FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: _userLocation,
-                initialZoom: 15.0,
+                initialCenter: _center,
+                initialZoom: 11.0,
               ),
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.example.mad',
                 ),
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: [
-                        const LatLng(3.2165, 101.7290), // Pharmacy A
-                        const LatLng(3.2155, 101.7280), // Path
-                        _userLocation, // User Location
-                      ],
-                      color: Colors.blue,
-                      strokeWidth: 4.0,
-                    ),
-                  ],
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _userLocation,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.person_pin_circle,
-                          color: Colors.blue, size: 40),
-                    ),
-                    Marker(
-                      point: const LatLng(3.2165, 101.7290),
-                      width: 40,
-                      height: 40,
-                      child: GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("AA Pharmacy - 2km away")),
-                          );
-                        },
-                        child: const Icon(Icons.local_pharmacy,
-                            color: Colors.red, size: 40),
-                      ),
-                    ),
-                  ],
-                ),
+                MarkerLayer(markers: _markers),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _getUserLocation,
-        child: const Icon(Icons.my_location),
-      ),
     );
   }
 }

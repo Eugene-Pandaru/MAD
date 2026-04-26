@@ -7,7 +7,8 @@ import 'package:mad/orderhistory.dart';
 import 'package:mad/points.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
-import 'package:mad/redemption.dart'; // 👈 Import Redemption
+import 'package:mad/redemption.dart';
+import 'package:mad/health_dashboard_screen.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -62,27 +63,62 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 40,
+                            radius: 35, // 🛠️ Adjusted size to avoid overflow
                             backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
-                            child: const Icon(Icons.person, size: 50, color: Color(0xFF1392AB)),
+                            child: const Icon(Icons.person, size: 40, color: Color(0xFF1392AB)),
                           ),
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 15), // 🛠️ Adjusted spacing
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   user?['nickname'] ?? "Guest",
-                                  style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold),
+                                  style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis, // 🛠️ Handle long names
                                 ),
                                 Text(
                                   user?['email'] ?? "No Email",
-                                  style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey),
+                                  style: GoogleFonts.openSans(fontSize: 13, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    /// 🟢 BIG ROUNDED BOX: STATUS
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => HealthDashboard()));
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(25),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1392AB),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [BoxShadow(color: const Color(0xFF1392AB).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.health_and_safety, color: Colors.white, size: 35), // 🛠️ Small icon adjustment
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Check Health Status", style: GoogleFonts.openSans(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                                  Text("Monitor your medical dashboard", style: GoogleFonts.openSans(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -104,7 +140,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       },
                     ),
                     _buildProfileItem(
-                      icon: Icons.redeem_outlined, // 👈 New Redemption Item
+                      icon: Icons.redeem_outlined,
                       title: "Redemption",
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const RedemptionPage()));
