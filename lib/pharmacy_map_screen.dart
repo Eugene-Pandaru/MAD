@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mad/utility.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PharmacyMapScreen extends StatefulWidget {
   const PharmacyMapScreen({super.key});
@@ -44,12 +45,42 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
     }
   }
 
+  Future<void> _gotoCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        Utils.snackbar(context, "Location services are disabled.", color: Colors.red);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          Utils.snackbar(context, "Location permissions are denied.", color: Colors.red);
+          return;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        Utils.snackbar(context, "Location permissions are permanently denied.", color: Colors.red);
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      _mapController.move(LatLng(position.latitude, position.longitude), 15.0);
+    } catch (e) {
+      debugPrint("Error getting location: $e");
+    }
+  }
+
   String _getBranchImageUrl(String branchName) {
     // Construct the public URL for the branch image from Supabase Storage
     final String bucketUrl = "https://ilywlqeofnxhssnezpgw.supabase.co/storage/v1/object/public/pharmacyLocation/";
     
     if (branchName.contains("Setapak")) return "${bucketUrl}Setapak.png";
     if (branchName.contains("Cheras")) return "${bucketUrl}Cheras.png";
+    if (branchName.contains("PJ")) return "${bucketUrl}PJ.png";
     
     // Default placeholder if name doesn't match
     return "https://via.placeholder.com/400x200?text=No+Image+Available";
@@ -108,6 +139,19 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
                     ),
                   ],
                 ),
+                
+                // Top Left Current Location Button
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    onPressed: _gotoCurrentLocation,
+                    child: const Icon(Icons.my_location, color: Color(0xFF1392AB)),
+                  ),
+                ),
+
                 if (_selectedBranch != null) _buildBranchPreview(),
               ],
             ),

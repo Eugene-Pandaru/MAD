@@ -16,18 +16,25 @@ class NotificationService {
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
+    
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
 
     tz.initializeTimeZones();
-    // Set local timezone to Malaysia
+    // Use try-catch to handle potential timezone initialization issues
     try {
-      tz.setLocalLocation(tz.getLocation('Asia/Kuala_Lumpur'));
+       tz.setLocalLocation(tz.getLocation('Asia/Kuala_Lumpur'));
     } catch (e) {
       debugPrint("Timezone error: $e");
     }
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap
+        debugPrint("Notification tapped: ${response.payload}");
+      },
+    );
   }
 
   Future<void> requestPermissions() async {
@@ -39,7 +46,7 @@ class NotificationService {
   }
 
   // Show immediate notification
-  Future<void> showNotification(int id, String title, String body) async {
+  Future<void> showNotification(int id, String title, String body, {String? payload}) async {
     await flutterLocalNotificationsPlugin.show(
       id,
       title,
@@ -52,15 +59,16 @@ class NotificationService {
           importance: Importance.max, 
           priority: Priority.high,
           playSound: true,
+          fullScreenIntent: true, // Try to show a more prominent alert
         ),
       ),
+      payload: payload,
     );
   }
 
   // Schedule a daily or weekly reminder at a specific time
   Future<void> scheduleMedicineReminder(int id, String name, String dose, String timeStr, String frequency) async {
     try {
-      // Parse time string (e.g., "9:00 AM")
       final DateFormat format = DateFormat.jm();
       final DateTime parsedTime = format.parse(timeStr);
       
@@ -89,7 +97,9 @@ class NotificationService {
             'Medicine Alarms',
             importance: Importance.max,
             priority: Priority.high,
-            channelShowBadge: true,
+            playSound: true,
+            styleInformation: BigTextStyleInformation(''),
+            category: AndroidNotificationCategory.alarm,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -97,6 +107,7 @@ class NotificationService {
         matchDateTimeComponents: frequency == 'Daily' 
             ? DateTimeComponents.time 
             : DateTimeComponents.dayOfWeekAndTime,
+        payload: 'reminder_$id',
       );
       debugPrint("Scheduled $name at $scheduledDate");
     } catch (e) {
