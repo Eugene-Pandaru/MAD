@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mad/notification_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mad/reminder_screen.dart';
+import 'package:mad/utility.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +60,9 @@ class GlobalReminderOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Only show if user is logged in
+    if (Utils.currentUser == null) return const SizedBox.shrink();
+
     final notificationService = NotificationService();
     final reminder = notificationService.overdueReminder;
 
@@ -68,89 +73,58 @@ class GlobalReminderOverlay extends StatelessWidget {
       child: Align(
         alignment: Alignment.topCenter,
         child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Material(
-            elevation: 10,
-            borderRadius: BorderRadius.circular(15),
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFF1392AB), width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1392AB).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.medication, color: Color(0xFF1392AB), size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Medicine Time!",
-                          style: GoogleFonts.openSans(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.black87
+          padding: const EdgeInsets.all(10),
+          child: GestureDetector(
+            onTap: () {
+              // Jump to schedule screen
+              final navigator = Navigator.of(context);
+              notificationService.dismissReminder();
+              navigator.push(MaterialPageRoute(builder: (context) => const ReminderScreen()));
+            },
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF1392AB), width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.medication, color: Color(0xFF1392AB), size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Medicine Reminder",
+                            style: GoogleFonts.openSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black87
+                            ),
                           ),
-                        ),
-                        Text(
-                          "${reminder.medicineName} - ${reminder.dosage}",
-                          style: GoogleFonts.openSans(fontSize: 12, color: Colors.black54),
-                        ),
-                      ],
+                          Text(
+                            "Time for ${reminder.medicineName}. Tap to view schedule.",
+                            style: GoogleFonts.openSans(fontSize: 12, color: Colors.black54),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        // Mark as taken in Supabase
-                        await Supabase.instance.client
-                            .from('reminders')
-                            .update({'is_taken': true})
-                            .eq('id', reminder.id!);
-
-                        // Dismiss the overlay and check for the next one
-                        notificationService.dismissReminder();
-                        notificationService.checkOverdueReminders();
-                      } catch (e) {
-                        debugPrint("Error marking as taken: $e");
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1392AB),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      minimumSize: const Size(60, 35),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                      onPressed: () => notificationService.dismissReminder(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    child: const Text("Eat", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20, color: Colors.grey),
-                    onPressed: () => notificationService.dismissReminder(),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

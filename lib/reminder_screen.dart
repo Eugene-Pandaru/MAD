@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/notification_service.dart';
 import 'reminder_model.dart';
+import 'package:intl/intl.dart';
 
 class ReminderScreen extends StatefulWidget {
   const ReminderScreen({super.key});
@@ -265,7 +266,31 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pending = _reminders.where((r) => !r.isTaken).toList();
+    final now = DateTime.now();
+    final DateFormat format = DateFormat.jm();
+
+    final missed = _reminders.where((r) {
+      if (r.isTaken) return false;
+      try {
+        final DateTime parsedTime = format.parse(r.time);
+        final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+        return now.isAfter(scheduledTimeToday);
+      } catch (e) {
+        return false;
+      }
+    }).toList();
+
+    final upcoming = _reminders.where((r) {
+      if (r.isTaken) return false;
+      try {
+        final DateTime parsedTime = format.parse(r.time);
+        final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+        return !now.isAfter(scheduledTimeToday);
+      } catch (e) {
+        return true;
+      }
+    }).toList();
+
     final taken = _reminders.where((r) => r.isTaken).toList();
 
     return Scaffold(
@@ -289,8 +314,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader("Havent", Colors.redAccent),
-                  ...pending.map((r) => _buildReminderTile(r)),
+                  if (missed.isNotEmpty) ...[
+                    _buildSectionHeader("Missed", Colors.red),
+                    ...missed.map((r) => _buildReminderTile(r, isMissed: true)),
+                    const SizedBox(height: 20),
+                  ],
+                  _buildSectionHeader("Upcoming", Colors.blueAccent),
+                  ...upcoming.map((r) => _buildReminderTile(r)),
                   const SizedBox(height: 30),
                   _buildSectionHeader("Already Taken", Colors.green),
                   ...taken.map((r) => _buildReminderTile(r)),
@@ -318,7 +348,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
     );
   }
 
-  Widget _buildReminderTile(Reminder item) {
+  Widget _buildReminderTile(Reminder item, {bool isMissed = false}) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 10),
@@ -332,9 +362,19 @@ class _ReminderScreenState extends State<ReminderScreen> {
                 activeColor: const Color(0xFF1392AB),
                 onChanged: (_) => _toggleTaken(item),
               ),
-        title: Text(item.medicineName, style: GoogleFonts.openSans(fontWeight: FontWeight.bold, decoration: item.isTaken ? TextDecoration.lineThrough : null)),
-        subtitle: Text("${item.dosage} at ${item.time} (${item.frequency})"),
-        trailing: _isEditMode ? const Icon(Icons.chevron_right) : null,
+        title: Text(
+          item.medicineName, 
+          style: GoogleFonts.openSans(
+            fontWeight: FontWeight.bold, 
+            decoration: item.isTaken ? TextDecoration.lineThrough : null,
+            color: isMissed ? Colors.red : null,
+          )
+        ),
+        subtitle: Text(
+          "${item.dosage} at ${item.time} (${item.frequency})",
+          style: TextStyle(color: isMissed ? Colors.red.withOpacity(0.7) : null),
+        ),
+        trailing: _isEditMode ? const Icon(Icons.chevron_right) : (isMissed ? const Icon(Icons.warning, color: Colors.red, size: 20) : null),
       ),
     );
   }
