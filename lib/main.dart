@@ -3,14 +3,16 @@ import 'package:mad/startpage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mad/notification_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Notifications
-  await NotificationService().init();
 
-  // Initialize Stripe (Replace with your own publishable key)
+  // Initialize Notifications
+  final notificationService = NotificationService();
+  await notificationService.init();
+
+  // Initialize Stripe
   Stripe.publishableKey = "pk_test_51TMTra30pXzuvOG7tMZOeoJVE9VWX2kSVS1wChjsAsQoJ4yPN8E6m15slIEQb2XwS0Z0efa88HP6cNk3q0Aqc3Td00Bxa7xhwE";
 
   // Initialize Supabase
@@ -27,9 +29,120 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Startpage(),
+      theme: ThemeData(
+        textTheme: GoogleFonts.openSansTextTheme(),
+      ),
+      home: const Startpage(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            // Use ListenableBuilder instead of Provider to watch for changes
+            ListenableBuilder(
+              listenable: NotificationService(),
+              builder: (context, _) => const GlobalReminderOverlay(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class GlobalReminderOverlay extends StatelessWidget {
+  const GlobalReminderOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final notificationService = NotificationService();
+    final reminder = notificationService.overdueReminder;
+
+    if (reminder == null) return const SizedBox.shrink();
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Material(
+            elevation: 10,
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: const Color(0xFF1392AB), width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1392AB).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.medication, color: Color(0xFF1392AB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Time for Medicine!",
+                          style: GoogleFonts.openSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black87
+                          ),
+                        ),
+                        Text(
+                          "${reminder.medicineName} (${reminder.dosage})",
+                          style: GoogleFonts.openSans(fontSize: 12, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        await Supabase.instance.client
+                            .from('reminders')
+                            .update({'is_taken': true})
+                            .eq('id', reminder.id!);
+
+                        notificationService.dismissReminder();
+                        notificationService.checkOverdueReminders();
+                      } catch (e) {
+                        debugPrint("Error marking as taken: $e");
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1392AB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      minimumSize: const Size(60, 35),
+                    ),
+                    child: const Text("Eat", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 5),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                    onPressed: () => notificationService.dismissReminder(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

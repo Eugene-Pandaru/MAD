@@ -18,6 +18,7 @@ class NotificationService extends ChangeNotifier {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   Timer? _checkTimer;
   Reminder? overdueReminder;
+  bool _isChecking = false;
 
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -40,16 +41,25 @@ class NotificationService extends ChangeNotifier {
       },
     );
 
-    // Start a periodic check every 30 seconds to see if any reminder is due
+    // Start a periodic check every 10 seconds for real-time responsiveness
     _checkTimer?.cancel();
-    _checkTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _checkTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       checkOverdueReminders();
     });
+    
+    // Initial check
+    checkOverdueReminders();
   }
 
   Future<void> checkOverdueReminders() async {
+    if (_isChecking) return;
+    _isChecking = true;
+
     final userId = Utils.currentUser?['id'];
-    if (userId == null) return;
+    if (userId == null) {
+      _isChecking = false;
+      return;
+    }
 
     try {
       final supabase = Supabase.instance.client;
@@ -59,7 +69,7 @@ class NotificationService extends ChangeNotifier {
           .eq('user_id', userId)
           .eq('is_taken', false);
 
-      if (data.isNotEmpty) {
+      if (data != null) {
         final List<Reminder> reminders = (data as List).map((json) => Reminder.fromJson(json)).toList();
         final now = DateTime.now();
         final DateFormat format = DateFormat.jm();
@@ -67,16 +77,19 @@ class NotificationService extends ChangeNotifier {
         Reminder? found;
         for (var r in reminders) {
           try {
-            final DateTime parsedTime = format.parse(r.time);
+            // Clean the time string just in case
+            String timeStr = r.time.trim();
+            final DateTime parsedTime = format.parse(timeStr);
             final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
             
-            // If it's time or past due today (within today)
-            if (now.isAfter(scheduledTimeToday) && now.day == scheduledTimeToday.day) {
+            // Check if it's past due today
+            if (now.isAfter(scheduledTimeToday)) {
                found = r;
+               debugPrint("DUE NOW: ${r.medicineName} at ${r.time}");
                break;
             }
           } catch (e) {
-            debugPrint("Time parse error: $e");
+            debugPrint("Time parse error for ${r.medicineName}: $e");
           }
         }
 
@@ -84,12 +97,11 @@ class NotificationService extends ChangeNotifier {
           overdueReminder = found;
           notifyListeners();
         }
-      } else if (overdueReminder != null) {
-        overdueReminder = null;
-        notifyListeners();
       }
     } catch (e) {
       debugPrint("Global reminder check error: $e");
+    } finally {
+      _isChecking = false;
     }
   }
 
