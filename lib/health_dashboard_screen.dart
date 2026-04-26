@@ -19,10 +19,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
   bool _isLoading = true;
   double _totalHoursLast7Days = 0;
   int _activeDaysLast7Days = 0;
+  double _targetHours = 5.0; // Default target
   
-  // Notification Settings State
   bool _remindersEnabled = true;
-  bool _exerciseAlerts = true;
 
   @override
   void initState() {
@@ -32,8 +31,45 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   Future<void> _initDashboard() async {
     await _fetchExerciseData();
+    await _fetchTargetGoal();
     if (_remindersEnabled) {
       await _checkMedicineReminders();
+    }
+  }
+
+  Future<void> _fetchTargetGoal() async {
+    final userId = Utils.currentUser?['id'];
+    if (userId == null) return;
+
+    try {
+      final data = await supabase
+          .from('users_profile')
+          .select('exercise_goal')
+          .eq('id', userId)
+          .maybeSingle();
+      
+      if (data != null && data['exercise_goal'] != null) {
+        if (mounted) {
+          setState(() {
+            _targetHours = (data['exercise_goal'] as num).toDouble();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Goal fetch error: $e");
+    }
+  }
+
+  Future<void> _updateTargetGoal(double newGoal) async {
+    final userId = Utils.currentUser?['id'];
+    if (userId == null) return;
+
+    try {
+      await supabase.from('users_profile').update({'exercise_goal': newGoal}).eq('id', userId);
+      setState(() => _targetHours = newGoal);
+      if (mounted) Utils.snackbar(context, "Weekly goal updated!", color: Colors.green);
+    } catch (e) {
+      if (mounted) Utils.snackbar(context, "Failed to update goal", color: Colors.red);
     }
   }
 
@@ -50,7 +86,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
         await NotificationService().showNotification(
           0, 
           "Medicine Reminder", 
-          "Don't forget: ${medicine.medicineName} (${medicine.dosage})"
+          "Don't forget your scheduled meds today!"
         );
       }
     } catch (e) {
@@ -98,7 +134,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
   Future<void> _addExercise(double hours) async {
     final userId = Utils.currentUser?['id'];
     if (userId == null) {
-      Utils.snackbar(context, "Error: User session not found. Please re-login.", color: Colors.red);
+      Utils.snackbar(context, "Error: User session not found.", color: Colors.red);
       return;
     }
 
@@ -110,17 +146,40 @@ class _HealthDashboardState extends State<HealthDashboard> {
       });
       
       _fetchExerciseData();
-      if (mounted) Utils.snackbar(context, "Exercise recorded successfully!", color: Colors.green);
+      if (mounted) Utils.snackbar(context, "Exercise recorded!", color: Colors.green);
     } catch (e) {
-      debugPrint("Exercise record error details: $e");
-      if (mounted) {
-        Utils.snackbar(
-          context, 
-          "Failed to record exercise: $e",
-          color: Colors.red
-        );
-      }
+      debugPrint("DEBUG: Exercise insert failed. Error: $e");
+      if (mounted) Utils.snackbar(context, "Failed: Check user_id type in Supabase", color: Colors.red);
     }
+  }
+
+  void _showGoalDialog() {
+    final controller = TextEditingController(text: _targetHours.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Set Weekly Target", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: "Target hours per week"),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              final val = double.tryParse(controller.text);
+              if (val != null && val > 0) {
+                _updateTargetGoal(val);
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1392AB)),
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showExerciseDialog() {
@@ -132,11 +191,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: "How many hours today?",
-            hintText: "e.g. 1.5",
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: "Hours exercised today"),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
@@ -146,8 +201,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
               if (hours != null && hours > 0) {
                 _addExercise(hours);
                 Navigator.pop(ctx);
-              } else {
-                Utils.snackbar(context, "Please enter a valid number of hours");
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1392AB)),
@@ -160,6 +213,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    double progress = (_totalHoursLast7Days / _targetHours).clamp(0.0, 1.0);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
@@ -176,15 +231,24 @@ class _HealthDashboardState extends State<HealthDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section 1: Medicine Reminders (Replacing the chart)
                   _buildSectionTitle("Medicine Management"),
                   const SizedBox(height: 15),
                   _buildReminderActionCard(),
                   const SizedBox(height: 30),
                   
-                  // Section 2: Exercise Tracker
-                  _buildSectionTitle("Exercise Summary (Last 7 Days)"),
-                  const SizedBox(height: 15),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSectionTitle("Weekly Exercise Goal"),
+                      TextButton.icon(
+                        onPressed: _showGoalDialog,
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text("Set Target"),
+                      )
+                    ],
+                  ),
+                  _buildGoalProgress(progress),
+                  const SizedBox(height: 20),
                   _buildExerciseSummary(),
                   const SizedBox(height: 20),
                   
@@ -203,8 +267,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
                   ),
 
                   const SizedBox(height: 40),
-                  
-                  // Section 3: Settings
                   _buildSectionTitle("Notification Settings"),
                   const SizedBox(height: 15),
                   _buildNotificationSettings(),
@@ -216,9 +278,38 @@ class _HealthDashboardState extends State<HealthDashboard> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+    return Text(title, style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87));
+  }
+
+  Widget _buildGoalProgress(double progress) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("${_totalHoursLast7Days.toStringAsFixed(1)} / $_targetHours hours", style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text("${(progress * 100).toInt()}%", style: const TextStyle(color: Color(0xFF1392AB), fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[200],
+            color: const Color(0xFF1392AB),
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          const SizedBox(height: 10),
+          Text(progress >= 1.0 ? "Goal Reached! Amazing!" : "Keep moving to reach your goal!", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ],
+      ),
     );
   }
 
@@ -235,25 +326,13 @@ class _HealthDashboardState extends State<HealthDashboard> {
         children: [
           const Icon(Icons.alarm_on, size: 50, color: Color(0xFF1392AB)),
           const SizedBox(height: 10),
-          Text(
-            "Keep track of your medications",
-            style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
+          Text("Keep track of your medications", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 15),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ReminderScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1392AB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderScreen())),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1392AB), foregroundColor: Colors.white),
               child: const Text("View & Edit All Reminders"),
             ),
           ),
@@ -265,23 +344,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
   Widget _buildExerciseSummary() {
     return Row(
       children: [
-        Expanded(
-          child: _buildSummaryCard(
-            "Total Hours",
-            _totalHoursLast7Days.toStringAsFixed(1),
-            Icons.timer_outlined,
-            Colors.orange,
-          ),
-        ),
+        Expanded(child: _buildSummaryCard("Total Hours", _totalHoursLast7Days.toStringAsFixed(1), Icons.timer_outlined, Colors.orange)),
         const SizedBox(width: 15),
-        Expanded(
-          child: _buildSummaryCard(
-            "Active Days",
-            "$_activeDaysLast7Days",
-            Icons.calendar_today_outlined,
-            Colors.green,
-          ),
-        ),
+        Expanded(child: _buildSummaryCard("Active Days", "$_activeDaysLast7Days", Icons.calendar_today_outlined, Colors.green)),
       ],
     );
   }
@@ -312,24 +377,12 @@ class _HealthDashboardState extends State<HealthDashboard> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))],
       ),
-      child: Column(
-        children: [
-          SwitchListTile(
-            title: Text("Medicine Reminders", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Receive alerts for scheduled medication"),
-            value: _remindersEnabled,
-            activeColor: const Color(0xFF1392AB),
-            onChanged: (val) => setState(() => _remindersEnabled = val),
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            title: Text("Daily Health Tips", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
-            subtitle: const Text("Get occasional tips for staying healthy"),
-            value: _exerciseAlerts,
-            activeColor: const Color(0xFF1392AB),
-            onChanged: (val) => setState(() => _exerciseAlerts = val),
-          ),
-        ],
+      child: SwitchListTile(
+        title: Text("Medicine Reminders", style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600)),
+        subtitle: const Text("Receive alerts for scheduled medication"),
+        value: _remindersEnabled,
+        activeColor: const Color(0xFF1392AB),
+        onChanged: (val) => setState(() => _remindersEnabled = val),
       ),
     );
   }
