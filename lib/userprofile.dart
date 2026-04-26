@@ -9,6 +9,7 @@ import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/redemption.dart';
 import 'package:mad/health_dashboard_screen.dart';
+import 'package:mad/myaddress.dart'; // 👈 Added import
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -132,6 +133,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
                         if (mounted) setState(() {});
+                      },
+                    ),
+                    // 🏠 My Address Row (NEW)
+                    _buildProfileItem(
+                      icon: Icons.location_on_outlined,
+                      title: "My Address",
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAddressPage()));
+                        setState(() {}); // Update local session if address changed
                       },
                     ),
                     _buildProfileItem(
