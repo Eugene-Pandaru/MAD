@@ -40,7 +40,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint("Fetch error: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -50,7 +50,6 @@ class _ReminderScreenState extends State<ReminderScreen> {
     final doseController = TextEditingController(text: existing?.dosage);
     String selectedFreq = existing?.frequency ?? 'Daily';
     
-    // Parse existing time string to TimeOfDay if updating
     TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
     if (existing != null) {
       try {
@@ -58,8 +57,10 @@ class _ReminderScreenState extends State<ReminderScreen> {
         final hm = parts[0].split(':');
         int hour = int.parse(hm[0]);
         int minute = int.parse(hm[1]);
-        if (parts[1] == 'PM' && hour < 12) hour += 12;
-        if (parts[1] == 'AM' && hour == 12) hour = 0;
+        if (parts.length > 1) {
+          if (parts[1] == 'PM' && hour < 12) hour += 12;
+          if (parts[1] == 'AM' && hour == 12) hour = 0;
+        }
         selectedTime = TimeOfDay(hour: hour, minute: minute);
       } catch (e) {
         debugPrint("Time parse error: $e");
@@ -104,6 +105,11 @@ class _ReminderScreenState extends State<ReminderScreen> {
               onPressed: () async {
                 if (nameController.text.isNotEmpty) {
                   final userId = Utils.currentUser?['id'];
+                  if (userId == null) {
+                    Utils.snackbar(context, "No user ID found. Please re-login.", color: Colors.red);
+                    return;
+                  }
+
                   final reminderData = {
                     'medicine_name': nameController.text,
                     'dosage': doseController.text,
@@ -122,7 +128,8 @@ class _ReminderScreenState extends State<ReminderScreen> {
                     Navigator.pop(ctx);
                     if (mounted) Utils.snackbar(context, existing == null ? "Reminder added!" : "Reminder updated!", color: Colors.green);
                   } catch (e) {
-                    if (mounted) Utils.snackbar(context, "Operation failed", color: Colors.red);
+                    debugPrint("Supabase Reminder Error: $e");
+                    if (mounted) Utils.snackbar(context, "Failed: $e", color: Colors.red);
                   }
                 }
               },
