@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Utils {
   /// 👤 Logged-in User Data
@@ -51,4 +53,34 @@ class Utils {
       controller.dispose();
     }
   }
+
+  /// 🖼️ Upload Image to Supabase Storage
+  static Future<String?> uploadImage({
+    required File file,
+    required String bucket,
+    required String fileName,
+  }) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Upload the file
+      final String path = await supabase.storage.from(bucket).upload(
+        fileName,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      debugPrint("Upload Success: $path");
+
+      // Return the public URL
+      return supabase.storage.from(bucket).getPublicUrl(fileName);
+    } on StorageException catch (e) {
+      debugPrint("Supabase Storage Error: ${e.message}");
+      return null;
+    } catch (e) {
+      debugPrint("Unexpected Upload Error: $e");
+      return null;
+    }
+  }
 }
+
