@@ -153,15 +153,28 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.push(context, MaterialPageRoute(builder: (context) => OrderDetailsPage(order: order)));
-                                  },
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[200], foregroundColor: Colors.black, elevation: 0),
-                                  child: const Text("View Details"),
+                                SizedBox(
+                                  height: 36,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(context, MaterialPageRoute(builder: (context) => OrderDetailsPage(order: order)));
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey[200], 
+                                      foregroundColor: Colors.black, 
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      textStyle: const TextStyle(fontSize: 12),
+                                    ),
+                                    child: const Text("Details"),
+                                  ),
                                 ),
-                                Row(
-                                  children: _buildActionButtons(order, status),
+                                Flexible(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: _buildActionButtons(order, status),
+                                  ),
                                 ),
                               ],
                             ),
@@ -181,38 +194,48 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
       return [
         TextButton(
           onPressed: () => _updateStatus(order, 'CANCELLED'),
-          child: const Text("Cancel", style: TextStyle(color: Colors.red)),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: const Text("Cancel", style: TextStyle(color: Colors.red, fontSize: 12)),
         ),
-        const SizedBox(width: 5),
-        ElevatedButton(
-          onPressed: () => _updateStatus(order, 'APPROVED'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: const Text("Pack Order", style: TextStyle(color: Colors.white)),
+        const SizedBox(width: 4),
+        SizedBox(
+          height: 36,
+          child: ElevatedButton(
+            onPressed: () => _updateStatus(order, 'APPROVED'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
+            child: const Text("Pack", style: TextStyle(color: Colors.white)),
+          ),
         ),
       ];
     } else if (status == 'APPROVED') {
       return [
-        ElevatedButton(
-          onPressed: () => _updateStatus(order, 'DELIVERING'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-          child: const Text("Ship Order", style: TextStyle(color: Colors.white)),
+        SizedBox(
+          height: 36,
+          child: ElevatedButton(
+            onPressed: () => _updateStatus(order, 'DELIVERING'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
+            child: const Text("Ship", style: TextStyle(color: Colors.white)),
+          ),
         ),
       ];
     } else if (status == 'DELIVERING') {
       return [
-        ElevatedButton(
-          onPressed: () => _updateStatus(order, 'DELIVERED'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-          child: const Text("Mark Delivered", style: TextStyle(color: Colors.white)),
+        SizedBox(
+          height: 36,
+          child: ElevatedButton(
+            onPressed: () => _updateStatus(order, 'DELIVERED'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
+            child: const Text("Complete", style: TextStyle(color: Colors.white)),
+          ),
         ),
       ];
     } else if (status == 'DELIVERED') {
       return [
-        const Text("Success", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+        const Text("Done", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
       ];
     } else {
       return [
-        const Text("Cancelled", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        const Text("Void", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
       ];
     }
   }
