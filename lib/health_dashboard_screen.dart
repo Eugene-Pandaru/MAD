@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/utility.dart';
 import 'package:mad/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'reminder_model.dart';
+import 'reminder_screen.dart';
 
 class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
@@ -16,7 +16,6 @@ class HealthDashboard extends StatefulWidget {
 
 class _HealthDashboardState extends State<HealthDashboard> {
   final supabase = Supabase.instance.client;
-  List<ExerciseRecord> _exerciseRecords = [];
   bool _isLoading = true;
   double _totalHoursLast7Days = 0;
   int _activeDaysLast7Days = 0;
@@ -51,7 +50,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
         await NotificationService().showNotification(
           0, 
           "Medicine Reminder", 
-          "Time to take your ${medicine.medicineName} (${medicine.dosage})"
+          "Don't forget: ${medicine.medicineName} (${medicine.dosage})"
         );
       }
     } catch (e) {
@@ -61,7 +60,10 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   Future<void> _fetchExerciseData() async {
     final userId = Utils.currentUser?['id'];
-    if (userId == null) return;
+    if (userId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
     try {
       final last7Days = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
@@ -82,7 +84,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
       if (mounted) {
         setState(() {
-          _exerciseRecords = records;
           _totalHoursLast7Days = total;
           _activeDaysLast7Days = activeDays.length;
           _isLoading = false;
@@ -96,18 +97,31 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   Future<void> _addExercise(double hours) async {
     final userId = Utils.currentUser?['id'];
-    if (userId == null) return;
+    if (userId == null) {
+      Utils.snackbar(context, "Error: User session not found. Please re-login.", color: Colors.red);
+      return;
+    }
 
     try {
+      // Ensure we pass user_id correctly. If your column is UUID, this works. 
+      // If it's int, you might need to parse it.
       await supabase.from('exercise_records').insert({
         'user_id': userId,
         'date': DateTime.now().toIso8601String(),
         'hours': hours,
       });
+      
       _fetchExerciseData();
-      if (mounted) Utils.snackbar(context, "Exercise recorded!", color: Colors.green);
+      if (mounted) Utils.snackbar(context, "Exercise recorded successfully!", color: Colors.green);
     } catch (e) {
-      if (mounted) Utils.snackbar(context, "Failed to record exercise", color: Colors.red);
+      debugPrint("Exercise record error details: $e");
+      if (mounted) {
+        Utils.snackbar(
+          context, 
+          "Failed to record exercise. Please ensure the 'exercise_records' table exists in Supabase.", 
+          color: Colors.red
+        );
+      }
     }
   }
 
@@ -119,17 +133,23 @@ class _HealthDashboardState extends State<HealthDashboard> {
         title: Text("Exercise Check-in", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "Hours exercised today", hintText: "e.g. 1.5"),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: "How many hours today?",
+            hintText: "e.g. 1.5",
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
               final hours = double.tryParse(controller.text);
-              if (hours != null) {
+              if (hours != null && hours > 0) {
                 _addExercise(hours);
                 Navigator.pop(ctx);
+              } else {
+                Utils.snackbar(context, "Please enter a valid number of hours");
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1392AB)),
@@ -158,11 +178,13 @@ class _HealthDashboardState extends State<HealthDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle("Medicine Adherence"),
+                  // Section 1: Medicine Reminders (Replacing the chart)
+                  _buildSectionTitle("Medicine Management"),
                   const SizedBox(height: 15),
-                  _buildAdherenceChart(),
+                  _buildReminderActionCard(),
                   const SizedBox(height: 30),
                   
+                  // Section 2: Exercise Tracker
                   _buildSectionTitle("Exercise Summary (Last 7 Days)"),
                   const SizedBox(height: 15),
                   _buildExerciseSummary(),
@@ -171,18 +193,20 @@ class _HealthDashboardState extends State<HealthDashboard> {
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _showExerciseDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text("Daily Check-in"),
+                      icon: const Icon(Icons.add_task),
+                      label: const Text("Daily Exercise Check-in"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1392AB),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 40),
+                  
+                  // Section 3: Settings
                   _buildSectionTitle("Notification Settings"),
                   const SizedBox(height: 15),
                   _buildNotificationSettings(),
@@ -200,8 +224,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
     );
   }
 
-  Widget _buildAdherenceChart() {
+  Widget _buildReminderActionCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -210,21 +235,30 @@ class _HealthDashboardState extends State<HealthDashboard> {
       ),
       child: Column(
         children: [
+          const Icon(Icons.alarm_on, size: 50, color: Color(0xFF1392AB)),
+          const SizedBox(height: 10),
+          Text(
+            "Keep track of your medications",
+            style: GoogleFonts.openSans(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 15),
           SizedBox(
-            height: 180,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 0,
-                centerSpaceRadius: 40,
-                sections: [
-                  PieChartSectionData(value: 85, color: const Color(0xFF1392AB), title: "85%", radius: 45, titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  PieChartSectionData(value: 15, color: Colors.grey[300], title: "15%", radius: 45, titleStyle: const TextStyle(color: Colors.black54, fontWeight: FontWeight.bold)),
-                ],
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ReminderScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1392AB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
+              child: const Text("View & Edit All Reminders"),
             ),
           ),
-          const SizedBox(height: 10),
-          Text("You're doing great! Keep it up.", style: GoogleFonts.openSans(color: Colors.grey[600])),
         ],
       ),
     );
