@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ManageAdminsPage extends StatefulWidget {
   const ManageAdminsPage({super.key});
@@ -12,99 +13,209 @@ class ManageAdminsPage extends StatefulWidget {
 class _ManageAdminsPageState extends State<ManageAdminsPage> {
   final supabase = Supabase.instance.client;
 
+  // Sorting Helper
+  int _rolePriority(String role) {
+    switch (role) {
+      case 'Superadmin': return 0;
+      case 'Admin': return 1;
+      case 'Pharmacist': return 2;
+      default: return 3;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Admin Management"),
+        title: Text("Admin Management", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase.from('admin').stream(primaryKey: ['id']),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          final admins = snapshot.data ?? [];
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: Colors.indigo));
+          
+          List<Map<String, dynamic>> admins = snapshot.data ?? [];
 
-          return ListView.builder(
-            itemCount: admins.length,
-            padding: const EdgeInsets.all(10),
-            itemBuilder: (context, index) {
-              final admin = admins[index];
-              bool isSuper = admin['roles'] == 'Superadmin';
+          // 🛠️ Sorting: Superadmin -> Admin -> Pharmacist
+          admins.sort((a, b) {
+            int pA = _rolePriority(a['roles'] ?? "");
+            int pB = _rolePriority(b['roles'] ?? "");
+            if (pA != pB) return pA.compareTo(pB);
+            return (a['full_name'] as String).compareTo(b['full_name'] as String);
+          });
 
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isSuper ? Colors.amber : Colors.indigo,
-                    child: const Icon(Icons.security, color: Colors.white),
-                  ),
-                  title: Text(admin['full_name']),
-                  subtitle: Text("${admin['username']} - ${admin['roles']}"),
-                  trailing: (admin['id'] == Utils.currentUser?['id']) 
-                      ? const Text("(Me)", style: TextStyle(color: Colors.grey))
-                      : IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteAdmin(admin['id']),
-                        ),
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                child: Row(
+                  children: [
+                    const Icon(Icons.admin_panel_settings_outlined, color: Colors.indigo, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Total Staff: ${admins.length}",
+                      style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ],
                 ),
-              );
-            },
+              ),
+              const Divider(height: 1),
+
+              Expanded(
+                child: ListView.builder(
+                  itemCount: admins.length,
+                  padding: const EdgeInsets.all(15),
+                  itemBuilder: (context, index) {
+                    final admin = admins[index];
+                    String role = admin['roles'] ?? "Admin";
+                    bool isMe = admin['id'] == Utils.currentUser?['id'];
+
+                    Color roleColor;
+                    if (role == 'Superadmin') roleColor = Colors.amber;
+                    else if (role == 'Admin') roleColor = Colors.indigo;
+                    else roleColor = Colors.teal;
+
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey[200]!)),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: roleColor.withValues(alpha: 0.1),
+                          child: Icon(
+                            role == 'Pharmacist' ? Icons.medication : Icons.security, 
+                            color: roleColor
+                          ),
+                        ),
+                        title: Text(admin['full_name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+                        subtitle: Text("${admin['username']} • $role"),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                              onPressed: () => _showAdminDialog(context, admin: admin),
+                            ),
+                            if (!isMe && role != 'Superadmin')
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => _confirmDeleteAdmin(admin['id']),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddAdminDialog(context),
+        onPressed: () => _showAdminDialog(context),
         backgroundColor: Colors.indigo,
         child: const Icon(Icons.person_add, color: Colors.white),
       ),
     );
   }
 
-  void _deleteAdmin(String id) async {
-    await supabase.from('admin').delete().eq('id', id);
-    if (mounted) Utils.snackbar(context, "Admin removed");
+  void _confirmDeleteAdmin(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Remove Staff?"),
+        content: const Text("Are you sure? This will remove the access for this user."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await supabase.from('admin').delete().eq('id', id);
+                if (mounted) {
+                  Navigator.pop(context);
+                  Utils.snackbar(context, "Staff removed", color: Colors.red);
+                }
+              } catch (e) {
+                if (mounted) Utils.snackbar(context, "Error: $e", color: Colors.red);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _showAddAdminDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final userController = TextEditingController();
-    final passController = TextEditingController();
-    String role = 'Admin';
+  void _showAdminDialog(BuildContext context, {Map<String, dynamic>? admin}) {
+    final bool isEdit = admin != null;
+    final nameController = TextEditingController(text: isEdit ? admin['full_name'] : "");
+    final userController = TextEditingController(text: isEdit ? admin['username'] : "");
+    final passController = TextEditingController(text: isEdit ? admin['password'] : "");
+    String role = isEdit ? admin['roles'] : 'Admin';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text("Register New Admin"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: "Full Name")),
-              TextField(controller: userController, decoration: const InputDecoration(labelText: "Username")),
-              TextField(controller: passController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
-              const SizedBox(height: 10),
-              DropdownButton<String>(
-                value: role,
-                isExpanded: true,
-                items: ['Admin', 'Superadmin'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                onChanged: (val) => setState(() => role = val!),
-              ),
-            ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(isEdit ? "Edit Staff" : "Register New Staff", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: userController, decoration: const InputDecoration(labelText: "Username", border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(controller: passController, decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()), obscureText: true),
+                const SizedBox(height: 15),
+                DropdownButtonFormField<String>(
+                  value: role,
+                  decoration: const InputDecoration(labelText: "Role", border: OutlineInputBorder()),
+                  items: ['Admin', 'Superadmin', 'Pharmacist'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (val) => setState(() => role = val!),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                await supabase.from('admin').insert({
+                if (nameController.text.isEmpty || userController.text.isEmpty || passController.text.isEmpty) {
+                  Utils.snackbar(context, "Please fill all fields", color: Colors.red);
+                  return;
+                }
+
+                final data = {
                   'full_name': nameController.text,
                   'username': userController.text,
                   'password': passController.text,
                   'roles': role,
-                });
-                Navigator.pop(context);
+                };
+
+                try {
+                  if (isEdit) {
+                    await supabase.from('admin').update(data).eq('id', admin['id']);
+                    Utils.snackbar(context, "Updated successfully", color: Colors.green);
+                  } else {
+                    await supabase.from('admin').insert(data);
+                    Utils.snackbar(context, "Registered successfully", color: Colors.green);
+                  }
+                  Navigator.pop(context);
+                } catch (e) {
+                  Utils.snackbar(context, "Error: $e", color: Colors.red);
+                }
               },
-              child: const Text("Register"),
+              child: const Text("Save"),
             ),
           ],
         ),

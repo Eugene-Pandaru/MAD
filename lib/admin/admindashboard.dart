@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
-import 'package:mad/login.dart';
+import 'package:mad/startpage.dart';
 import 'package:mad/admin/manage_products.dart';
 import 'package:mad/admin/manage_orders.dart';
 import 'package:mad/admin/manage_inventory.dart';
@@ -9,7 +9,11 @@ import 'package:mad/admin/manage_admins.dart';
 import 'package:mad/admin/admin_profile.dart';
 import 'package:mad/admin/low_stock_page.dart';
 import 'package:mad/admin/expiry_page.dart';
+import 'package:mad/admin/manage_vouchers.dart';
+import 'package:mad/admin/manage_rewards.dart';
+import 'package:mad/admin/manage_pharmacists.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -21,64 +25,108 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
-    const DashboardHome(),
-    const ManageOrdersPage(),
-    const ManageInventoryPage(),
-    const AdminProfilePage(),
-  ];
+  void _onTabChange(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  Future<bool> _showLogoutConfirmation() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Confirm Logout"),
+        content: const Text("Are you sure you want to log out?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text("No", style: GoogleFonts.openSans(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: Text("Yes", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final String role = Utils.currentUser?['roles'] ?? "Admin";
     final String title = (role == 'Superadmin') ? "SuperAdmin" : "Admin Dashboard";
+    final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom != 0;
 
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Utils.currentUser = null;
-              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginPage()), (route) => false);
-            },
-          ),
-        ],
-      ),
-      
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        final bool shouldLogout = await _showLogoutConfirmation();
+        if (shouldLogout && mounted) {
+           Utils.currentUser = null;
+           Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Startpage()), (route) => false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.blueAccent,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                final bool shouldLogout = await _showLogoutConfirmation();
+                if (shouldLogout && mounted) {
+                   Utils.currentUser = null;
+                   Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Startpage()), (route) => false);
+                }
+              },
+            ),
+          ],
+        ),
+        
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            DashboardHome(onTabChange: _onTabChange),
+            const ManageOrdersPage(),
+            const ManageInventoryPage(),
+            AdminProfilePage(
+              key: ValueKey("${Utils.currentUser?['id']}_${Utils.currentUser?['profile_url']}_${Utils.currentUser?['full_name']}"),
+              onUpdate: () => setState(() {}),
+            ),
+          ],
+        ),
 
-      /// 🔻 Footer Navigation (4 items + Profile)
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.dashboard, "Home", 0),
-              _buildNavItem(Icons.receipt_long, "Orders", 1),
-              const SizedBox(width: 40), // Gap for Scanning button
-              _buildNavItem(Icons.inventory, "Stock", 2),
-              _buildNavItem(Icons.person, "Profile", 3),
-            ],
+        bottomNavigationBar: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8.0,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.dashboard, "Home", 0),
+                _buildNavItem(Icons.receipt_long, "Orders", 1),
+                const SizedBox(width: 40), 
+                _buildNavItem(Icons.inventory, "Stock", 2),
+                _buildNavItem(Icons.person, "Profile", 3),
+              ],
+            ),
           ),
         ),
-      ),
 
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blueAccent,
-        onPressed: () => Utils.snackbar(context, "Scanning Barcode..."),
-        child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 30),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: isKeyboardOpen ? null : FloatingActionButton(
+          backgroundColor: Colors.blueAccent,
+          onPressed: () => Utils.snackbar(context, "Scanning Barcode..."),
+          child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 30),
+        ),
       ),
     );
   }
@@ -99,7 +147,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 }
 
 class DashboardHome extends StatelessWidget {
-  const DashboardHome({super.key});
+  final Function(int) onTabChange;
+  const DashboardHome({super.key, required this.onTabChange});
 
   @override
   Widget build(BuildContext context) {
@@ -114,12 +163,20 @@ class DashboardHome extends StatelessWidget {
 
         if (snapshot.hasData) {
           final now = DateTime.now();
-          final threeMonths = now.add(const Duration(days: 90));
+          final today = DateTime(now.year, now.month, now.day);
+          final threeMonthsLimit = today.add(const Duration(days: 90));
+          
           lowStockCount = snapshot.data!.where((p) => (p['stock_quantity'] ?? 0) < 20).length;
+          
           expiryCount = snapshot.data!.where((p) {
              if (p['expiry_date'] == null) return false;
-             DateTime exp = DateTime.parse(p['expiry_date']);
-             return exp.isBefore(threeMonths) && exp.isAfter(now);
+             try {
+               DateTime exp = DateTime.parse(p['expiry_date']);
+               DateTime expDate = DateTime(exp.year, exp.month, exp.day);
+               return expDate.isBefore(threeMonthsLimit) && (expDate.isAfter(today) || expDate.isAtSameMomentAs(today));
+             } catch (e) {
+               return false;
+             }
           }).length;
         }
 
@@ -153,10 +210,11 @@ class DashboardHome extends StatelessWidget {
                   _buildModuleCard(context, "Orders", Icons.receipt_long, Colors.blue, const ManageOrdersPage()),
                   _buildModuleCard(context, "Customers", Icons.people, Colors.purple, const ManageCustomersPage()),
                   if (isSuperAdmin)
-                    _buildModuleCard(context, "Admins", Icons.admin_panel_settings, Colors.indigo, const ManageAdminsPage()),
-                  _buildModuleCard(context, "Rewards", Icons.card_giftcard, Colors.pink, null),
-                  _buildModuleCard(context, "Vouchers", Icons.confirmation_number, Colors.amber, null),
-                  _buildModuleCard(context, "Profiles", Icons.account_circle, Colors.grey, const AdminProfilePage()),
+                    _buildModuleCard(context, "Staffs", Icons.admin_panel_settings, Colors.indigo, const ManageAdminsPage()),
+                  _buildModuleCard(context, "Specialists", Icons.medical_services, Colors.teal, const ManagePharmacistsPage()),
+                  _buildModuleCard(context, "Rewards", Icons.card_giftcard, Colors.pink, const ManageRewardsPage()),
+                  _buildModuleCard(context, "Vouchers", Icons.confirmation_number, Colors.amber, const ManageVouchersPage()),
+                  _buildModuleCard(context, "Profiles", Icons.account_circle, Colors.grey, null, onTap: () => onTabChange(3)),
                 ],
               ),
             ],
@@ -186,9 +244,15 @@ class DashboardHome extends StatelessWidget {
     );
   }
 
-  Widget _buildModuleCard(BuildContext context, String title, IconData icon, Color color, Widget? page) {
+  Widget _buildModuleCard(BuildContext context, String title, IconData icon, Color color, Widget? page, {VoidCallback? onTap}) {
     return InkWell(
-      onTap: () { if (page != null) Navigator.push(context, MaterialPageRoute(builder: (context) => page)); },
+      onTap: () { 
+        if (onTap != null) {
+          onTap();
+        } else if (page != null) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => page)); 
+        }
+      },
       child: Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
         child: Column(

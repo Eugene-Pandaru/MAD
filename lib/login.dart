@@ -4,6 +4,7 @@ import 'package:mad/utility.dart';
 import 'package:mad/forgotpass.dart';
 import 'package:mad/home.dart';
 import 'package:mad/admin/adminlogin.dart';
+import 'package:mad/startpage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
@@ -20,6 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   bool obscurePassword = true;
+  int _failedAttempts = 0;
 
   InputDecoration inputDecoration(String label) {
     return InputDecoration(
@@ -178,8 +180,20 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 );
                               } else {
+                                _failedAttempts++;
+                                if (_failedAttempts >= 3) {
+                                  Utils.snackbar(context, "Too many failed attempts. Returning to start page.", color: Colors.red);
+                                  if (mounted) {
+                                    Navigator.pushAndRemoveUntil(
+                                      context, 
+                                      MaterialPageRoute(builder: (context) => const Startpage()), 
+                                      (route) => false
+                                    );
+                                  }
+                                  return;
+                                }
                                 Utils.snackbar(
-                                    context, "Invalid email or password",
+                                    context, "Invalid email or password ($_failedAttempts/3)",
                                     color: Colors.red);
                               }
                             } catch (e) {

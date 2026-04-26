@@ -5,7 +5,7 @@ import 'package:mad/points.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/rewards.dart';
 import 'package:mad/startpage.dart';
-import 'package:mad/pharmacy_map_screen.dart'; // 👈 Import Map
+import 'package:mad/pharmacy_map_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'orderhistory.dart';
@@ -134,7 +134,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _navigateTo(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => page));
-    if (mounted) setState(() {}); 
+    if (mounted) {
+      setState(() {}); 
+    }
   }
 
   Future<bool> _showLogoutConfirmation() async {
@@ -162,6 +164,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final String nickname = Utils.currentUser?['nickname'] ?? "User";
+    final String? profileUrl = Utils.currentUser?['profile_url'];
     final userId = Utils.currentUser?['id'];
 
     return PopScope(
@@ -185,9 +188,15 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 30,
-                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                        backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                        backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
+                            ? NetworkImage(profileUrl)
+                            : null,
+                        child: (profileUrl == null || profileUrl.isEmpty || !profileUrl.startsWith('http'))
+                            ? const Icon(Icons.person, size: 30, color: Color(0xFF1392AB))
+                            : null,
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -312,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.only(left: 20),
                     children: [
                       buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC), onTap: () {
-                         _navigateTo(const PharmacyMapScreen()); // 👈 Link to Map
+                         _navigateTo(const PharmacyMapScreen());
                       }),
                       buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF8DC6BC), onTap: () {
                         _navigateTo(const ChatBotPage());
