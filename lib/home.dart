@@ -231,14 +231,14 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🟢 Header
+                // Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 30,
-                        backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                        backgroundColor: const Color(0xFF1392AB).withOpacity(0.1),
                         backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
                             ? NetworkImage(profileUrl)
                             : null,
@@ -268,7 +268,7 @@ class _HomePageState extends State<HomePage> {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                                color: const Color(0xFF1392AB).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -286,7 +286,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
       
-                // 🟢 Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: CompositedTransformTarget(
@@ -322,7 +321,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 My QR Box (Clickable with Shadow)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: GestureDetector(
@@ -336,7 +334,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(25),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF1392AB).withValues(alpha: 0.35),
+                            color: const Color(0xFF1392AB).withOpacity(0.35),
                             blurRadius: 15,
                             spreadRadius: 2,
                             offset: const Offset(0, 8),
@@ -379,7 +377,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 Quick Links
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -406,7 +403,6 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
-                // 🟢 All Products
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -447,7 +443,7 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
+                                  color: Colors.black.withOpacity(0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 8),
                                 )
@@ -514,7 +510,37 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               buildNavItem(Icons.receipt_long, "Orders", false, onTap: () => _navigateTo(const OrderHistoryPage())),
-              buildNavItem(Icons.person_outline, "Profile", false, onTap: () => _navigateTo(const UserProfilePage())),
+              
+              // 🔴 Profile Nav Item with Notification Dot
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: supabase.from('reminders').stream(primaryKey: ['id']).eq('user_id', userId ?? ''),
+                builder: (context, snapshot) {
+                  bool showDot = false;
+                  if (snapshot.hasData) {
+                    final activeReminders = snapshot.data!.where((item) => item['is_archived'] == false).toList();
+                    final pendingCount = activeReminders.where((item) => item['is_taken'] == false).length;
+                    
+                    // Show dot ONLY if there are active reminders left to take
+                    showDot = activeReminders.isNotEmpty && pendingCount > 0;
+                  }
+                  
+                  return Stack(
+                    children: [
+                      buildNavItem(Icons.person_outline, "Profile", false, onTap: () => _navigateTo(const UserProfilePage())),
+                      if (showDot)
+                        Positioned(
+                          right: 15,
+                          top: 10,
+                          child: Container(
+                            padding: const EdgeInsets.all(1),
+                            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                            constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -538,7 +564,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 8,
               offset: const Offset(0, 8),
             )
