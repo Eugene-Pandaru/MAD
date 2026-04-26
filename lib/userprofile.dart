@@ -22,13 +22,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = Utils.currentUser;
+    final profileUrl = user?['profile_url'];
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -54,7 +54,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    /// 👤 Profile Header Card
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -66,7 +65,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           CircleAvatar(
                             radius: 35,
                             backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
-                            child: const Icon(Icons.person, size: 40, color: Color(0xFF1392AB)),
+                            backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
+                                ? NetworkImage(profileUrl)
+                                : null,
+                            child: (profileUrl == null || profileUrl.isEmpty || !profileUrl.startsWith('http'))
+                                ? const Icon(Icons.person, size: 40, color: Color(0xFF1392AB))
+                                : null,
                           ),
                           const SizedBox(width: 15),
                           Expanded(
@@ -91,7 +95,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     ),
                     const SizedBox(height: 30),
 
-                    /// 🟢 BIG ROUNDED BOX: STATUS
                     GestureDetector(
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => HealthDashboard()));
@@ -124,13 +127,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     ),
                     const SizedBox(height: 30),
 
-                    /// 🛠 Settings List
                     _buildProfileItem(
                       icon: Icons.edit_outlined,
                       title: "Edit Profile",
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
-                        setState(() {});
+                        if (mounted) setState(() {});
                       },
                     ),
                     // 🏠 My Address Row (NEW)

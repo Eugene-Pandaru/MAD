@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mad/admin/admindashboard.dart';
+import 'package:mad/startpage.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -16,6 +17,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController passwordController = TextEditingController();
   bool obscurePassword = true;
   bool isLoading = false;
+  int _failedAttempts = 0;
 
   @override
   void dispose() {
@@ -49,7 +51,19 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           );
         }
       } else {
-        Utils.snackbar(context, "Invalid Admin Credentials", color: Colors.red);
+        _failedAttempts++;
+        if (_failedAttempts >= 3) {
+          Utils.snackbar(context, "Too many failed attempts. Returning to start page.", color: Colors.red);
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(builder: (context) => const Startpage()), 
+              (route) => false
+            );
+          }
+          return;
+        }
+        Utils.snackbar(context, "Invalid Admin Credentials ($_failedAttempts/3)", color: Colors.red);
       }
     } catch (e) {
       Utils.snackbar(context, "Error connecting to server", color: Colors.red);

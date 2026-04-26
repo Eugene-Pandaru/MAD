@@ -4,6 +4,8 @@ import 'package:mad/footer.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:mad/startpage.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -26,7 +28,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool obscureNew = true;
   bool obscureConfirm = true;
   bool isSaving = false;
-  XFile? pickedImage;
+  File? _pickedImage;
+  final picker = ImagePicker();
+  int _failedAttempts = 0;
 
   @override
   void initState() {
@@ -89,7 +93,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -117,19 +120,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      /// 🖼️ Profile Picture Upload Section
                       Center(
                         child: Stack(
                           children: [
                             CircleAvatar(
                               radius: 50,
                               backgroundColor: Colors.grey.shade100,
-                              backgroundImage: pickedImage != null 
-                                ? AssetImage('assets/${pickedImage!.name}') as ImageProvider
-                                : (user?['profile_url'] != null 
-                                    ? AssetImage('assets/${user!['profile_url']}')
-                                    : null),
-                              child: (pickedImage == null && user?['profile_url'] == null)
+                              backgroundImage: _pickedImage != null 
+                                ? FileImage(_pickedImage!) 
+                                : (user?['profile_url'] != null && user!['profile_url'].startsWith('http') 
+                                    ? NetworkImage(user['profile_url']) 
+                                    : null) as ImageProvider?,
+                              child: _pickedImage == null && (user?['profile_url'] == null || !user!['profile_url'].startsWith('http'))
                                   ? const Icon(Icons.person, size: 50, color: Color(0xFF1392AB))
                                   : null,
                             ),
@@ -138,11 +140,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               right: 0,
                               child: GestureDetector(
                                 onTap: () async {
-                                  final picker = ImagePicker();
-                                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                                  if (image != null) {
+                                  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                  if (pickedFile != null) {
                                     setState(() {
-                                      pickedImage = image;
+                                      _pickedImage = File(pickedFile.path);
                                     });
                                   }
                                 },
@@ -158,7 +159,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       const SizedBox(height: 30),
 
-                      /// 👤 Fields
                       TextFormField(
                         controller: emailController,
                         enabled: false,
@@ -193,13 +193,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                       buildPasswordField(
                         controller: currentPasswordController,
-                        label: "Current Password",
+                        label: "Current Password (Required)",
                         obscureText: obscureCurrent,
                         onToggle: () => setState(() => obscureCurrent = !obscureCurrent),
                         validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            if (value != user?['password']) return "Incorrect current password";
-                          }
+                          if (value == null || value.isEmpty) return "Required to save changes";
+                          if (value != user?['password']) return "Incorrect current password";
                           return null;
                         },
                       ),
@@ -207,7 +206,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                       buildPasswordField(
                         controller: newPasswordController,
-                        label: "New Password",
+                        label: "New Password (Optional)",
                         obscureText: obscureNew,
                         onToggle: () => setState(() => obscureNew = !obscureNew),
                         validator: (value) {
@@ -235,7 +234,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                       const SizedBox(height: 40),
 
-                      /// 🔘 Submit Button
                       SizedBox(
                         width: double.infinity,
                         height: 55,
@@ -249,18 +247,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   'nickname': nicknameController.text,
                                 };
                                 
-                                // If a new image was picked, record its name
-                                if (pickedImage != null) {
-                                  updateData['profile_url'] = pickedImage!.name;
+                                if (_pickedImage != null) {
+                                  final fileName = 'user_${userId}_${DateTime.now().millisecondsSinceEpoch}.png';
+                                  final publicUrl = await Utils.uploadImage(
+                                    file: _pickedImage!, 
+                                    bucket: 'userprofile', 
+                                    fileName: fileName
+                                  );
+                                  if (publicUrl != null) {
+                                    updateData['profile_url'] = publicUrl;
+                                  }
                                 }
 
-                                // If new password was entered, update it
                                 if (newPasswordController.text.isNotEmpty) {
                                   updateData['password'] = newPasswordController.text;
                                 }
 
-                                final response = await supabase.from('users_profile').update(updateData).eq('id', userId).select().single();
-                                Utils.currentUser = response;
+                                final response = await supabase.from('users_profile').update(updateData).eq('id', userId).select();
+                                if (response.isNotEmpty) {
+                                  Utils.currentUser = response.first;
+                                }
                                 
                                 if (mounted) {
                                   Utils.snackbar(context, "Profile updated successfully", color: Colors.green);
@@ -270,6 +276,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 if (mounted) Utils.snackbar(context, "Update failed: ${e.toString()}", color: Colors.red);
                               } finally {
                                 if (mounted) setState(() => isSaving = false);
+                              }
+                            } else {
+                              if (currentPasswordController.text != user?['password']) {
+                                _failedAttempts++;
+                                if (_failedAttempts >= 3) {
+                                  Utils.snackbar(context, "Too many failed attempts. Logging out...", color: Colors.red);
+                                  Utils.currentUser = null;
+                                  Navigator.pushAndRemoveUntil(
+                                    context, 
+                                    MaterialPageRoute(builder: (context) => const Startpage()), 
+                                    (route) => false
+                                  );
+                                } else {
+                                  Utils.snackbar(context, "Incorrect password ($_failedAttempts/3)", color: Colors.red);
+                                }
                               }
                             }
                           },
