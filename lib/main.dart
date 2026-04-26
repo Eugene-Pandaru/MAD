@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Notifications
+  // Initialize Notifications singleton
   final notificationService = NotificationService();
   await notificationService.init();
 
@@ -39,10 +39,12 @@ class MainApp extends StatelessWidget {
         return Stack(
           children: [
             if (child != null) child,
-            // Use ListenableBuilder instead of Provider to watch for changes
+            // Listens to the global NotificationService singleton
             ListenableBuilder(
               listenable: NotificationService(),
-              builder: (context, _) => const GlobalReminderOverlay(),
+              builder: (context, _) {
+                return const GlobalReminderOverlay();
+              },
             ),
           ],
         );
@@ -59,6 +61,7 @@ class GlobalReminderOverlay extends StatelessWidget {
     final notificationService = NotificationService();
     final reminder = notificationService.overdueReminder;
 
+    // If no medicine is due, show nothing
     if (reminder == null) return const SizedBox.shrink();
 
     return SafeArea(
@@ -69,12 +72,20 @@ class GlobalReminderOverlay extends StatelessWidget {
           child: Material(
             elevation: 10,
             borderRadius: BorderRadius.circular(15),
+            color: Colors.transparent,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: const Color(0xFF1392AB), width: 1.5),
+                border: Border.all(color: const Color(0xFF1392AB), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -93,7 +104,7 @@ class GlobalReminderOverlay extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "Time for Medicine!",
+                          "Medicine Time!",
                           style: GoogleFonts.openSans(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -101,20 +112,23 @@ class GlobalReminderOverlay extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          "${reminder.medicineName} (${reminder.dosage})",
+                          "${reminder.medicineName} - ${reminder.dosage}",
                           style: GoogleFonts.openSans(fontSize: 12, color: Colors.black54),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () async {
                       try {
+                        // Mark as taken in Supabase
                         await Supabase.instance.client
                             .from('reminders')
                             .update({'is_taken': true})
                             .eq('id', reminder.id!);
 
+                        // Dismiss the overlay and check for the next one
                         notificationService.dismissReminder();
                         notificationService.checkOverdueReminders();
                       } catch (e) {
@@ -130,7 +144,6 @@ class GlobalReminderOverlay extends StatelessWidget {
                     ),
                     child: const Text("Eat", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(width: 5),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20, color: Colors.grey),
                     onPressed: () => notificationService.dismissReminder(),
