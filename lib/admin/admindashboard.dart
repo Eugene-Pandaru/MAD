@@ -14,6 +14,7 @@ import 'package:mad/admin/manage_rewards.dart';
 import 'package:mad/admin/manage_pharmacists.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mad/admin/qr_scanner_page.dart'; // Import the new QR scanner page
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -124,7 +125,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: isKeyboardOpen ? null : FloatingActionButton(
           backgroundColor: Colors.blueAccent,
-          onPressed: () => Utils.snackbar(context, "Scanning Barcode..."),
+          onPressed: () async { // Changed onPressed to async
+            final String? scannedCode = await Navigator.push<String>( // Navigate to QrScannerPage
+              context,
+              MaterialPageRoute(builder: (context) => const QrScannerPage()),
+            );
+            if (scannedCode != null) {
+              // Handle the scanned code here, e.g., navigate to a product page or show a dialog
+              Utils.snackbar(context, "Scanned QR Code: $scannedCode"); // For demonstration, showing a snackbar
+              print('Scanned QR Code: $scannedCode');
+            }
+          },
           child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 30),
         ),
       ),
