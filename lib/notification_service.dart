@@ -5,13 +5,19 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:intl/intl.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mad/utility.dart';
+import 'reminder_model.dart';
 
-class NotificationService {
+class NotificationService extends ChangeNotifier {
   static final NotificationService _internal = NotificationService._();
   factory NotificationService() => _internal;
   NotificationService._();
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  Timer? _checkTimer;
+  Reminder? overdueReminder;
 
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -21,7 +27,6 @@ class NotificationService {
     InitializationSettings(android: initializationSettingsAndroid);
 
     tz.initializeTimeZones();
-    // Use try-catch to handle potential timezone initialization issues
     try {
        tz.setLocalLocation(tz.getLocation('Asia/Kuala_Lumpur'));
     } catch (e) {
@@ -31,10 +36,66 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
         debugPrint("Notification tapped: ${response.payload}");
       },
     );
+
+    // Start a periodic check every 30 seconds to see if any reminder is due
+    _checkTimer?.cancel();
+    _checkTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      checkOverdueReminders();
+    });
+  }
+
+  Future<void> checkOverdueReminders() async {
+    final userId = Utils.currentUser?['id'];
+    if (userId == null) return;
+
+    try {
+      final supabase = Supabase.instance.client;
+      final data = await supabase
+          .from('reminders')
+          .select()
+          .eq('user_id', userId)
+          .eq('is_taken', false);
+
+      if (data.isNotEmpty) {
+        final List<Reminder> reminders = (data as List).map((json) => Reminder.fromJson(json)).toList();
+        final now = DateTime.now();
+        final DateFormat format = DateFormat.jm();
+
+        Reminder? found;
+        for (var r in reminders) {
+          try {
+            final DateTime parsedTime = format.parse(r.time);
+            final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+            
+            // If it's time or past due today (within today)
+            if (now.isAfter(scheduledTimeToday) && now.day == scheduledTimeToday.day) {
+               found = r;
+               break;
+            }
+          } catch (e) {
+            debugPrint("Time parse error: $e");
+          }
+        }
+
+        if (overdueReminder?.id != found?.id) {
+          overdueReminder = found;
+          notifyListeners();
+        }
+      } else if (overdueReminder != null) {
+        overdueReminder = null;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Global reminder check error: $e");
+    }
+  }
+
+  void dismissReminder() {
+    overdueReminder = null;
+    notifyListeners();
   }
 
   Future<void> requestPermissions() async {
@@ -45,7 +106,6 @@ class NotificationService {
     }
   }
 
-  // Show immediate notification
   Future<void> showNotification(int id, String title, String body, {String? payload}) async {
     await flutterLocalNotificationsPlugin.show(
       id,
@@ -59,14 +119,13 @@ class NotificationService {
           importance: Importance.max, 
           priority: Priority.high,
           playSound: true,
-          fullScreenIntent: true, // Try to show a more prominent alert
+          fullScreenIntent: true,
         ),
       ),
       payload: payload,
     );
   }
 
-  // Schedule a daily or weekly reminder at a specific time
   Future<void> scheduleMedicineReminder(int id, String name, String dose, String timeStr, String frequency) async {
     try {
       final DateFormat format = DateFormat.jm();
@@ -93,13 +152,13 @@ class NotificationService {
         scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'med_channel',
-            'Medicine Alarms',
+            'med_channel_exact',
+            'Medicine Exact Alarms',
             importance: Importance.max,
             priority: Priority.high,
             playSound: true,
-            styleInformation: BigTextStyleInformation(''),
             category: AndroidNotificationCategory.alarm,
+            visibility: NotificationVisibility.public,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -109,9 +168,8 @@ class NotificationService {
             : DateTimeComponents.dayOfWeekAndTime,
         payload: 'reminder_$id',
       );
-      debugPrint("Scheduled $name at $scheduledDate");
     } catch (e) {
-      debugPrint("Error scheduling notification: $e");
+      debugPrint("Error scheduling: $e");
     }
   }
 
