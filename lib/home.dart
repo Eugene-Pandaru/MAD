@@ -209,8 +209,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final String nickname = Utils.currentUser?['nickname'] ?? "User";
-    final userId = Utils.currentUser?['id'];
+    final user = Utils.currentUser;
+    final String nickname = user?['nickname'] ?? "User";
+    final userId = user?['id'];
+    final String? profileUrl = user?['profile_url'];
 
     return PopScope(
       canPop: false,
@@ -234,9 +236,15 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 30,
-                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                        backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                        backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
+                            ? NetworkImage(profileUrl)
+                            : null,
+                        child: (profileUrl == null || profileUrl.isEmpty || !profileUrl.startsWith('http'))
+                            ? const Icon(Icons.person, size: 30, color: Color(0xFF1392AB))
+                            : null,
                       ),
                       const SizedBox(width: 15),
                       Expanded(
