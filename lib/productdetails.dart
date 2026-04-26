@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/utility.dart';
+import 'package:mad/productlist.dart'; // Import added
 
 class ProductDetailsPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -19,7 +20,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           content: Column(
@@ -44,10 +45,17 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   onPressed: () {
-                    Navigator.pop(context); // Close Dialog
-                    Navigator.pop(context); // Return to Product List
+                    Navigator.pop(dialogContext); // Close Dialog
+                    // ✅ FIXED: Navigate specifically to Product List Page
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProductListPage()),
+                    );
                   },
-                  child: Text("OK", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(
+                      "OK",
+                      style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)
+                  ),
                 ),
               )
             ],
@@ -89,7 +97,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 errorBuilder: (c, e, s) => const Icon(Icons.image, size: 100, color: Colors.grey),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -145,7 +153,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     widget.product['description'] ?? "No description available for this product.",
                     style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
                   ),
-                  
+
                   const SizedBox(height: 30),
 
                   // 📦 Quantity Selector
@@ -175,7 +183,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 30),
 
                   // 📦 Stock Info (Mock)
@@ -215,7 +223,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               child: const Icon(Icons.favorite_border, color: Colors.grey),
             ),
             const SizedBox(width: 20),
-            
+
             // Add to Cart Button
             Expanded(
               child: SizedBox(
