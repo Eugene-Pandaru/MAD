@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/footer.dart';
 import 'package:mad/pharmacist.dart';
 import 'package:mad/appointmentdetails.dart';
+import 'package:mad/utility.dart';
 
 class AppointmentHistoryPage extends StatefulWidget {
   const AppointmentHistoryPage({super.key});
@@ -17,12 +18,14 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userId = Utils.currentUser?['id'];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 🟢 Header (Matching home/productlist style)
+            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -48,6 +51,7 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
                 stream: supabase
                     .from('appointments')
                     .stream(primaryKey: ['id'])
+                    .eq('user_id', userId ?? '')
                     .order('created_at', ascending: false),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -76,11 +80,12 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
                     itemBuilder: (context, index) {
                       final appt = appointments[index];
                       bool isCancelled = appt['status'] == 'Cancelled';
+                      double price = double.tryParse(appt['total_amount'].toString()) ?? 0.0;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 15),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: const Color(0xFF1392AB).withValues(alpha: 0.1), // 🔵 Blue background
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: ListTile(
@@ -95,13 +100,14 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
                           contentPadding: const EdgeInsets.all(15),
                           leading: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: (isCancelled ? Colors.red : const Color(0xFF1392AB)).withValues(alpha: 0.1),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF003366), // 🔵 Dark blue background
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              Icons.person_outline, 
-                              color: isCancelled ? Colors.red : const Color(0xFF1392AB)
+                            child: const Icon(
+                              Icons.calendar_today, 
+                              color: Colors.white, // ⚪ White icon
+                              size: 20,
                             ),
                           ),
                           title: Text(
@@ -112,13 +118,13 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 5),
-                              Text("📅 ${appt['appointment_date']}", style: GoogleFonts.openSans(fontSize: 12)),
-                              Text("⏰ ${appt['appointment_time']}", style: GoogleFonts.openSans(fontSize: 12)),
+                              Text("📅 ${appt['appointment_date']}", style: GoogleFonts.openSans(fontSize: 12, color: Colors.black87)),
+                              Text("⏰ ${appt['appointment_time']}", style: GoogleFonts.openSans(fontSize: 12, color: Colors.black87)),
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (isCancelled ? Colors.red : const Color(0xFF8DC6BC)).withValues(alpha: 0.15),
+                                  color: isCancelled ? Colors.red : const Color(0xFF003366), // 🔴 Red if cancelled, else dark blue
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -126,14 +132,14 @@ class _AppointmentHistoryPageState extends State<AppointmentHistoryPage> {
                                   style: GoogleFonts.openSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: isCancelled ? Colors.red : const Color(0xFF1392AB),
+                                    color: Colors.white, // ⚪ White text
                                   ),
                                 ),
                               ),
                             ],
                           ),
                           trailing: Text(
-                            "RM ${appt['total_amount']}",
+                            "RM ${price.toStringAsFixed(2)}",
                             style: GoogleFonts.openSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

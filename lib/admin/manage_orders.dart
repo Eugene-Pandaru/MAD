@@ -14,7 +14,8 @@ class ManageOrdersPage extends StatefulWidget {
 class _ManageOrdersPageState extends State<ManageOrdersPage> {
   final supabase = Supabase.instance.client;
 
-  Future<void> _updateStatus(String orderId, String newStatus) async {
+  Future<void> _updateStatus(Map<String, dynamic> order, String newStatus) async {
+    final orderId = order['id'];
     try {
       final Map<String, dynamic> updateData = {
         'delivery_status': newStatus
@@ -22,12 +23,25 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
 
       if (newStatus == 'CANCELLED') {
         updateData['status'] = 'CANCELLED';
+        
+        // 📉 Deduct points back from user
+        final userId = order['user_id'];
+        final double totalAmount = double.tryParse(order['total_amount'].toString()) ?? 0.0;
+        final int pointsToDeduct = (totalAmount * 10).floor();
+
+        if (userId != null && pointsToDeduct > 0) {
+          await supabase.from('points').insert({
+            'user_id': userId,
+            'points_amount': -pointsToDeduct,
+            'reason': 'Order Cancelled: #$orderId',
+          });
+        }
       }
 
       await supabase.from('orders').update(updateData).eq('id', orderId);
       if (mounted) {
         setState(() {}); 
-        Utils.snackbar(context, "Order $newStatus", color: Colors.green);
+        Utils.snackbar(context, "Order $newStatus", color: newStatus == 'CANCELLED' ? Colors.orange : Colors.green);
       }
     } catch (e) {
       if (mounted) Utils.snackbar(context, "Error updating status", color: Colors.red);
@@ -37,7 +51,7 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: AppBar(
@@ -51,8 +65,9 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(text: "New"),
-              Tab(text: "Pending"),
+              Tab(text: "Requesting"),
+              Tab(text: "Packaging"),
+              Tab(text: "Delivering"),
               Tab(text: "Delivered"),
               Tab(text: "Cancelled"),
             ],
@@ -66,15 +81,17 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
             }
             final orders = snapshot.data ?? [];
 
-            final newOrders = orders.where((o) => (o['delivery_status'] ?? 'PENDING') == 'PENDING').toList();
-            final pendingOrders = orders.where((o) => o['delivery_status'] == 'APPROVED').toList();
+            final requestingOrders = orders.where((o) => (o['delivery_status'] ?? 'PENDING') == 'PENDING').toList();
+            final packagingOrders = orders.where((o) => o['delivery_status'] == 'APPROVED').toList();
+            final deliveringOrders = orders.where((o) => o['delivery_status'] == 'DELIVERING').toList();
             final deliveredOrders = orders.where((o) => o['delivery_status'] == 'DELIVERED').toList();
             final cancelledOrders = orders.where((o) => o['delivery_status'] == 'CANCELLED').toList();
 
             return TabBarView(
               children: [
-                _buildOrderList(newOrders, "New"),
-                _buildOrderList(pendingOrders, "Pending"),
+                _buildOrderList(requestingOrders, "Requesting"),
+                _buildOrderList(packagingOrders, "Packaging"),
+                _buildOrderList(deliveringOrders, "Delivering"),
                 _buildOrderList(deliveredOrders, "Delivered"),
                 _buildOrderList(cancelledOrders, "Cancelled"),
               ],
@@ -88,7 +105,6 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
   Widget _buildOrderList(List<Map<String, dynamic>> orders, String type) {
     return Column(
       children: [
-        // 📊 TOTAL NUMBER DISPLAY (Per Section)
         Container(
           width: double.infinity,
           color: Colors.white,
@@ -164,22 +180,30 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
     if (status == 'PENDING') {
       return [
         TextButton(
-          onPressed: () => _updateStatus(order['id'], 'CANCELLED'),
+          onPressed: () => _updateStatus(order, 'CANCELLED'),
           child: const Text("Cancel", style: TextStyle(color: Colors.red)),
         ),
         const SizedBox(width: 5),
         ElevatedButton(
-          onPressed: () => _updateStatus(order['id'], 'APPROVED'),
+          onPressed: () => _updateStatus(order, 'APPROVED'),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: const Text("Accept", style: TextStyle(color: Colors.white)),
+          child: const Text("Pack Order", style: TextStyle(color: Colors.white)),
         ),
       ];
     } else if (status == 'APPROVED') {
       return [
         ElevatedButton(
-          onPressed: () => _updateStatus(order['id'], 'DELIVERED'),
+          onPressed: () => _updateStatus(order, 'DELIVERING'),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-          child: const Text("Send to Delivery", style: TextStyle(color: Colors.white)),
+          child: const Text("Ship Order", style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else if (status == 'DELIVERING') {
+      return [
+        ElevatedButton(
+          onPressed: () => _updateStatus(order, 'DELIVERED'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+          child: const Text("Mark Delivered", style: TextStyle(color: Colors.white)),
         ),
       ];
     } else if (status == 'DELIVERED') {

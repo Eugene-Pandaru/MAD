@@ -46,7 +46,6 @@ class _PointsPageState extends State<PointsPage> {
                   if (snapshot.hasData) {
                     history = List<Map<String, dynamic>>.from(snapshot.data!);
                     history.sort((a, b) => b['created_at'].compareTo(a['created_at']));
-                    // Force cast to int to prevent errors
                     totalPts = history.fold(0, (sum, item) => sum + (int.tryParse(item['points_amount'].toString()) ?? 0));
                   }
 
@@ -67,6 +66,18 @@ class _PointsPageState extends State<PointsPage> {
                               Text("Your Points", style: GoogleFonts.openSans(color: Colors.white, fontSize: 16)),
                               const SizedBox(height: 10),
                               Text("$totalPts pts", style: GoogleFonts.openSans(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white)),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  "Earn Rate: RM 1.00 = 10 pts",
+                                  style: GoogleFonts.openSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              ),
                             ],
                           ),
                         ),

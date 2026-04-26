@@ -49,7 +49,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
-                // 🔍 FIX: Added .eq('user_id', currentUserId) to filter orders for THIS user only
                 future: supabase
                     .from('orders')
                     .select()
@@ -88,7 +87,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 15),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: const Color(0xFF1392AB).withValues(alpha: 0.1), // 🔵 Blue background for each order box
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: ListTile(
@@ -103,11 +102,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           contentPadding: const EdgeInsets.all(15),
                           leading: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF003366), // 🔵 Dark blue background for shipping icon
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.local_shipping_outlined, color: Color(0xFF1392AB)),
+                            child: const Icon(Icons.local_shipping_outlined, color: Colors.white), // ⚪ White icon
                           ),
                           title: Text(
                             "Order #${order['id']}",
@@ -117,12 +116,12 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 5),
-                              Text("Date: $formattedDate", style: GoogleFonts.openSans(fontSize: 12, color: Colors.grey)),
+                              Text("Date: $formattedDate", style: GoogleFonts.openSans(fontSize: 12, color: Colors.black54)),
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF8DC6BC).withValues(alpha: 0.2),
+                                  color: const Color(0xFF003366), // 🔵 Dark blue for Paid status
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -130,7 +129,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                   style: GoogleFonts.openSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF1392AB),
+                                    color: Colors.white, // ⚪ White text for Paid status
                                   ),
                                 ),
                               ),

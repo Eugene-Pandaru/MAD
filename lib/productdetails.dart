@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/utility.dart';
+import 'package:mad/productlist.dart';
 
 class ProductDetailsPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -14,48 +15,6 @@ class ProductDetailsPage extends StatefulWidget {
 
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
   int quantity = 1;
-
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 80),
-              const SizedBox(height: 20),
-              Text(
-                "Successfully added into cart",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.openSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1392AB),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context); // Close Dialog
-                    Navigator.pop(context); // Return to Product List
-                  },
-                  child: Text("OK", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              )
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +48,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 errorBuilder: (c, e, s) => const Icon(Icons.image, size: 100, color: Colors.grey),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -145,7 +104,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     widget.product['description'] ?? "No description available for this product.",
                     style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
                   ),
-                  
+
                   const SizedBox(height: 30),
 
                   // 📦 Quantity Selector
@@ -175,7 +134,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 30),
 
                   // 📦 Stock Info (Mock)
@@ -205,17 +164,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         ),
         child: Row(
           children: [
-            // Favorite Button
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Icon(Icons.favorite_border, color: Colors.grey),
-            ),
-            const SizedBox(width: 20),
-            
             // Add to Cart Button
             Expanded(
               child: SizedBox(
@@ -223,7 +171,19 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     CartManager.addToCart(widget.product, quantity: quantity);
-                    _showSuccessDialog(context);
+                    
+                    // 🛠️ Show modern floating snackbar instead of dialog
+                    Utils.snackbar(
+                      context, 
+                      "Successfully added into cart", 
+                      color: Colors.green // 👈 Changed to green
+                    );
+                    
+                    // 🚀 Return user to the product list page
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProductListPage()),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1392AB),
