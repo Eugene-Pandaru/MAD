@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -60,7 +61,7 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
                     const SizedBox(width: 10),
                     Text(
                       "Total Staff: ${admins.length}",
-                      style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                   ],
                 ),
@@ -87,14 +88,14 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey[200]!)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: roleColor.withValues(alpha: 0.1),
+                          backgroundColor: roleColor.withOpacity(0.1),
                           child: Icon(
                             role == 'Pharmacist' ? Icons.medication : Icons.security, 
                             color: roleColor
                           ),
                         ),
-                        title: Text(admin['full_name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
-                        subtitle: Text("${admin['username']} • $role"),
+                        title: Text(admin['full_name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                        subtitle: Text("${admin['username']} • $role", style: GoogleFonts.openSans(fontSize: 14)),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -130,10 +131,10 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Remove Staff?"),
-        content: const Text("Are you sure? This will remove the access for this user."),
+        title: Text("Remove Staff?", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure? This will remove the access for this user.", style: GoogleFonts.openSans()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.openSans())),
           ElevatedButton(
             onPressed: () async {
               try {
@@ -147,7 +148,7 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+            child: Text("Delete", style: GoogleFonts.openSans(color: Colors.white)),
           ),
         ],
       ),
@@ -156,10 +157,12 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
 
   void _showAdminDialog(BuildContext context, {Map<String, dynamic>? admin}) {
     final bool isEdit = admin != null;
+    final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: isEdit ? admin['full_name'] : "");
     final userController = TextEditingController(text: isEdit ? admin['username'] : "");
     final passController = TextEditingController(text: isEdit ? admin['password'] : "");
     String role = isEdit ? admin['roles'] : 'Admin';
+    bool obscurePass = true;
 
     showDialog(
       context: context,
@@ -167,37 +170,58 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
         builder: (context, setState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(isEdit ? "Edit Staff" : "Register New Staff", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder())),
-                const SizedBox(height: 12),
-                TextField(controller: userController, decoration: const InputDecoration(labelText: "Username", border: OutlineInputBorder())),
-                const SizedBox(height: 12),
-                TextField(controller: passController, decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()), obscureText: true),
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  value: role,
-                  decoration: const InputDecoration(labelText: "Role", border: OutlineInputBorder()),
-                  items: ['Admin', 'Superadmin', 'Pharmacist'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                  onChanged: (val) => setState(() => role = val!),
-                ),
-              ],
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController, 
+                    decoration: const InputDecoration(labelText: "Full Name", border: OutlineInputBorder()),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                    validator: (val) => (val == null || val.trim().isEmpty) ? "Enter valid name (no numbers/symbols)" : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: userController, 
+                    decoration: const InputDecoration(labelText: "Username", border: OutlineInputBorder()),
+                    validator: (val) => (val == null || val.isEmpty) ? "Enter username" : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: passController, 
+                    decoration: InputDecoration(
+                      labelText: "Password", 
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscurePass ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => obscurePass = !obscurePass),
+                      ),
+                    ), 
+                    obscureText: obscurePass,
+                    validator: (val) => (val == null || val.length < 6) ? "Password must be at least 6 characters" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: role,
+                    decoration: const InputDecoration(labelText: "Role", border: OutlineInputBorder()),
+                    items: ['Admin', 'Superadmin', 'Pharmacist'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) => setState(() => role = val!),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.openSans())),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isEmpty || userController.text.isEmpty || passController.text.isEmpty) {
-                  Utils.snackbar(context, "Please fill all fields", color: Colors.red);
-                  return;
-                }
+                if (!_formKey.currentState!.validate()) return;
 
                 final data = {
-                  'full_name': nameController.text,
-                  'username': userController.text,
+                  'full_name': nameController.text.trim(),
+                  'username': userController.text.trim(),
                   'password': passController.text,
                   'roles': role,
                 };
@@ -215,7 +239,7 @@ class _ManageAdminsPageState extends State<ManageAdminsPage> {
                   Utils.snackbar(context, "Error: $e", color: Colors.red);
                 }
               },
-              child: const Text("Save"),
+              child: Text("Save", style: GoogleFonts.openSans()),
             ),
           ],
         ),

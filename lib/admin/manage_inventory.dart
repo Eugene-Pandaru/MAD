@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mad/admin/admindashboard.dart';
 
 class ManageInventoryPage extends StatefulWidget {
   const ManageInventoryPage({super.key});
@@ -21,6 +22,16 @@ class _ManageInventoryPageState extends State<ManageInventoryPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminDashboard()),
+              (route) => false,
+            );
+          },
+        ),
         title: Text("Inventory Tracking", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,

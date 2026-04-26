@@ -3,6 +3,7 @@ import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/orderdetails.dart';
+import 'package:mad/admin/admindashboard.dart';
 
 class ManageOrdersPage extends StatefulWidget {
   const ManageOrdersPage({super.key});
@@ -24,7 +25,6 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
       if (newStatus == 'CANCELLED') {
         updateData['status'] = 'CANCELLED';
         
-        // 📉 Deduct points back from user
         final userId = order['user_id'];
         final double totalAmount = double.tryParse(order['total_amount'].toString()) ?? 0.0;
         final int pointsToDeduct = (totalAmount * 10).floor();
@@ -41,7 +41,7 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
       await supabase.from('orders').update(updateData).eq('id', orderId);
       if (mounted) {
         setState(() {}); 
-        Utils.snackbar(context, "Order $newStatus", color: newStatus == 'CANCELLED' ? Colors.orange : Colors.green);
+        Utils.snackbar(context, "Order Moved to $newStatus", color: newStatus == 'CANCELLED' ? Colors.orange : Colors.green);
       }
     } catch (e) {
       if (mounted) Utils.snackbar(context, "Error updating status", color: Colors.red);
@@ -55,12 +55,22 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
       child: Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: AppBar(
-          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const AdminDashboard()),
+                (route) => false,
+              );
+            },
+          ),
           title: Text("Order Management", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           bottom: const TabBar(
             isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
@@ -81,19 +91,19 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
             }
             final orders = snapshot.data ?? [];
 
-            final requestingOrders = orders.where((o) => (o['delivery_status'] ?? 'PENDING') == 'PENDING').toList();
-            final packagingOrders = orders.where((o) => o['delivery_status'] == 'APPROVED').toList();
-            final deliveringOrders = orders.where((o) => o['delivery_status'] == 'DELIVERING').toList();
-            final deliveredOrders = orders.where((o) => o['delivery_status'] == 'DELIVERED').toList();
-            final cancelledOrders = orders.where((o) => o['delivery_status'] == 'CANCELLED').toList();
+            final requesting = orders.where((o) => (o['delivery_status'] ?? 'REQUESTING') == 'REQUESTING' || o['delivery_status'] == 'PENDING').toList();
+            final packaging = orders.where((o) => o['delivery_status'] == 'PACKAGING' || o['delivery_status'] == 'APPROVED').toList();
+            final delivering = orders.where((o) => o['delivery_status'] == 'DELIVERING').toList();
+            final delivered = orders.where((o) => o['delivery_status'] == 'DELIVERED').toList();
+            final cancelled = orders.where((o) => o['delivery_status'] == 'CANCELLED').toList();
 
             return TabBarView(
               children: [
-                _buildOrderList(requestingOrders, "Requesting"),
-                _buildOrderList(packagingOrders, "Packaging"),
-                _buildOrderList(deliveringOrders, "Delivering"),
-                _buildOrderList(deliveredOrders, "Delivered"),
-                _buildOrderList(cancelledOrders, "Cancelled"),
+                _buildOrderList(requesting, "Requesting"),
+                _buildOrderList(packaging, "Packaging"),
+                _buildOrderList(delivering, "Delivering"),
+                _buildOrderList(delivered, "Delivered"),
+                _buildOrderList(cancelled, "Cancelled"),
               ],
             );
           },
@@ -114,7 +124,7 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
               const Icon(Icons.receipt_long, color: Colors.blueAccent, size: 20),
               const SizedBox(width: 10),
               Text(
-                "Total $type Orders: ${orders.length}",
+                "Total $type: ${orders.length}",
                 style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ],
@@ -129,7 +139,7 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
                   padding: const EdgeInsets.all(10),
                   itemBuilder: (context, index) {
                     final order = orders[index];
-                    final String status = order['delivery_status'] ?? 'PENDING';
+                    final String status = order['delivery_status']?.toString().toUpperCase() ?? 'REQUESTING';
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -151,10 +161,9 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
                             Text("Customer: ${order['user_name']}", style: const TextStyle(color: Colors.grey)),
                             const Divider(),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 SizedBox(
-                                  height: 36,
+                                  height: 32,
                                   child: ElevatedButton(
                                     onPressed: () {
                                       Navigator.push(context, MaterialPageRoute(builder: (context) => OrderDetailsPage(order: order)));
@@ -163,19 +172,14 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
                                       backgroundColor: Colors.grey[200], 
                                       foregroundColor: Colors.black, 
                                       elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      textStyle: const TextStyle(fontSize: 12),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      textStyle: const TextStyle(fontSize: 11),
                                     ),
                                     child: const Text("Details"),
                                   ),
                                 ),
-                                Flexible(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: _buildActionButtons(order, status),
-                                  ),
-                                ),
+                                const Spacer(),
+                                ..._buildActionButtons(order, status),
                               ],
                             ),
                           ],
@@ -190,52 +194,52 @@ class _ManageOrdersPageState extends State<ManageOrdersPage> {
   }
 
   List<Widget> _buildActionButtons(Map<String, dynamic> order, String status) {
-    if (status == 'PENDING') {
+    if (status == 'REQUESTING' || status == 'PENDING') {
       return [
         TextButton(
           onPressed: () => _updateStatus(order, 'CANCELLED'),
-          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero),
           child: const Text("Cancel", style: TextStyle(color: Colors.red, fontSize: 12)),
         ),
         const SizedBox(width: 4),
         SizedBox(
-          height: 36,
+          height: 32,
           child: ElevatedButton(
-            onPressed: () => _updateStatus(order, 'APPROVED'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
-            child: const Text("Pack", style: TextStyle(color: Colors.white)),
+            onPressed: () => _updateStatus(order, 'PACKAGING'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 12)),
+            child: const Text("Pack", style: TextStyle(color: Colors.white, fontSize: 11)),
           ),
         ),
       ];
-    } else if (status == 'APPROVED') {
+    } else if (status == 'PACKAGING' || status == 'APPROVED') {
       return [
         SizedBox(
-          height: 36,
+          height: 32,
           child: ElevatedButton(
             onPressed: () => _updateStatus(order, 'DELIVERING'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
-            child: const Text("Ship", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(horizontal: 12)),
+            child: const Text("Ship", style: TextStyle(color: Colors.white, fontSize: 11)),
           ),
         ),
       ];
     } else if (status == 'DELIVERING') {
       return [
         SizedBox(
-          height: 36,
+          height: 32,
           child: ElevatedButton(
             onPressed: () => _updateStatus(order, 'DELIVERED'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: const EdgeInsets.symmetric(horizontal: 12), textStyle: const TextStyle(fontSize: 12)),
-            child: const Text("Complete", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 12)),
+            child: const Text("Complete", style: TextStyle(color: Colors.white, fontSize: 11)),
           ),
         ),
       ];
     } else if (status == 'DELIVERED') {
       return [
-        const Text("Done", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+        const Text("Finished", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
       ];
     } else {
       return [
-        const Text("Void", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+        const Text("Cancelled", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
       ];
     }
   }

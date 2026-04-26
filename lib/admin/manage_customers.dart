@@ -13,6 +13,7 @@ class ManageCustomersPage extends StatefulWidget {
 
 class _ManageCustomersPageState extends State<ManageCustomersPage> {
   final supabase = Supabase.instance.client;
+  final List<Color> _chartColors = [Colors.purple, Colors.blue, Colors.orange, Colors.teal, Colors.pink];
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +44,11 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
                   padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
                   child: Row(
                     children: [
-                      const Icon(Icons.people_alt_outlined, color: Colors.purple, size: 20),
+                      const Icon(Icons.people_alt_outlined, color: Colors.purple, size: 24),
                       const SizedBox(width: 10),
                       Text(
                         "Total Customers: ${customers.length}",
-                        style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 18),
                       ),
                     ],
                   ),
@@ -55,19 +56,35 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
                 const Divider(height: 1),
 
                 const SizedBox(height: 25),
-                Text("Point Distribution (%)", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text("Point Distribution (%)", style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 25),
                 
-                // 🥧 PIE CHART
-                SizedBox(
-                  height: 200,
-                  child: PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 40,
-                      sections: _buildPieSections(customers),
+                // 🥧 PIE CHART WITH LEGEND
+                Row(
+                  children: [
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 200,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 40,
+                            sections: _buildPieSections(customers),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _buildLegend(customers),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                 ),
 
                 const Padding(
@@ -77,7 +94,7 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(alignment: Alignment.centerLeft, child: Text("Customer Ranking (Highest Pts)", style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold))),
+                  child: Align(alignment: Alignment.centerLeft, child: Text("Customer Ranking (Highest Pts)", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold))),
                 ),
                 const SizedBox(height: 15),
 
@@ -90,24 +107,29 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
                     final customer = customers[index];
                     bool isSuspended = customer['is_suspended'] ?? false;
                     int points = customer['total_points'] ?? 0;
+                    
+                    // Assign color from _chartColors for top 5, otherwise default to purple
+                    Color rankingColor = index < _chartColors.length 
+                        ? _chartColors[index] 
+                        : Colors.purple;
 
                     return Card(
                       elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 10),
+                      margin: const EdgeInsets.only(bottom: 12),
                       color: isSuspended ? Colors.red.shade50 : Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey[200]!)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: isSuspended ? Colors.grey : Colors.purple.withValues(alpha: 0.1),
-                          child: Text("${index + 1}", style: TextStyle(color: isSuspended ? Colors.white : Colors.purple, fontWeight: FontWeight.bold)),
+                          backgroundColor: isSuspended ? Colors.grey : rankingColor.withOpacity(0.1),
+                          child: Text("${index + 1}", style: TextStyle(color: isSuspended ? Colors.white : rankingColor, fontWeight: FontWeight.bold, fontSize: 16)),
                         ),
-                        title: Text(customer['nickname'] ?? 'User', style: GoogleFonts.openSans(fontWeight: FontWeight.bold, decoration: isSuspended ? TextDecoration.lineThrough : null)),
-                        subtitle: Text("${customer['email']}\nPoints: $points pts"),
+                        title: Text(customer['nickname'] ?? 'User', style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16, decoration: isSuspended ? TextDecoration.lineThrough : null)),
+                        subtitle: Text("${customer['email']}\nPoints: $points pts", style: GoogleFonts.openSans(fontSize: 14)),
                         isThreeLine: true,
                         trailing: ElevatedButton(
                           onPressed: () => _confirmSuspension(customer['id'], isSuspended),
                           style: ElevatedButton.styleFrom(backgroundColor: isSuspended ? Colors.green : Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                          child: Text(isSuspended ? "Restore" : "Suspend", style: const TextStyle(color: Colors.white, fontSize: 10)),
+                          child: Text(isSuspended ? "Restore" : "Suspend", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
                         ),
                       ),
                     );
@@ -126,16 +148,35 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
     int totalOverallPoints = customers.fold(0, (sum, c) => sum + (c['total_points'] as int));
     if (totalOverallPoints == 0) return [PieChartSectionData(value: 100, color: Colors.grey[300], title: "No Pts", radius: 50)];
 
-    final List<Color> colors = [Colors.purple, Colors.blue, Colors.orange, Colors.teal, Colors.pink];
-
     return customers.asMap().entries.take(5).map((e) {
       double percentage = (e.value['total_points'] / totalOverallPoints) * 100;
       return PieChartSectionData(
         value: percentage,
-        color: colors[e.key % colors.length],
+        color: _chartColors[e.key % _chartColors.length],
         title: "${percentage.toStringAsFixed(0)}%",
         radius: 55,
-        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildLegend(List<Map<String, dynamic>> customers) {
+    return customers.asMap().entries.take(5).map((e) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(width: 12, height: 12, color: _chartColors[e.key % _chartColors.length]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                e.value['nickname'] ?? 'User',
+                style: GoogleFonts.openSans(fontSize: 12, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       );
     }).toList();
   }
@@ -167,17 +208,17 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Suspend Account?"),
-        content: const Text("Are you sure you want to suspend this customer? they will be unable to use the app."),
+        title: Text("Suspend Account?", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to suspend this customer? they will be unable to use the app.", style: GoogleFonts.openSans()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.openSans())),
           ElevatedButton(
             onPressed: () {
                Navigator.pop(context);
                _toggleSuspension(id, false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Suspend", style: TextStyle(color: Colors.white)),
+            child: Text("Suspend", style: GoogleFonts.openSans(color: Colors.white)),
           ),
         ],
       ),
@@ -186,7 +227,7 @@ class _ManageCustomersPageState extends State<ManageCustomersPage> {
 
   void _toggleSuspension(String id, bool currentStatus) async {
     await supabase.from('users_profile').update({'is_suspended': !currentStatus}).eq('id', id);
-    setState(() {});
+    if (mounted) setState(() {});
     Utils.snackbar(context, currentStatus ? "Account Restored" : "Account Suspended", color: currentStatus ? Colors.green : Colors.red);
   }
 }

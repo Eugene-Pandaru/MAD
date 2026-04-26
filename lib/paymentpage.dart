@@ -72,7 +72,6 @@ class _PaymentPageState extends State<PaymentPage> {
         await _saveAppointmentToDatabase(finalMethodLabel);
       }
 
-      // 🎁 Add Points logic
       await _addPointsToUser();
 
       if (!mounted) return;
@@ -92,10 +91,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _addPointsToUser() async {
     final userId = Utils.currentUser?['id'];
     if (userId == null) return;
-
-    // Calculation: RM 1 = 10 pts
     final int pointsEarned = (totalAmount * 10).floor();
-    
     if (pointsEarned > 0) {
       await Supabase.instance.client.from('points').insert({
         'user_id': userId,
@@ -133,7 +129,7 @@ class _PaymentPageState extends State<PaymentPage> {
       'delivery_address': widget.deliveryAddress,
       'status': 'Paid',
       'payment_method': method,
-      'delivery_status': 'PENDING',
+      'delivery_status': 'REQUESTING', // 👈 Updated from PENDING to REQUESTING
       'voucher_code': widget.voucherCode,
       'items': CartManager.cartItems.map((item) => {
         'name': item.name,

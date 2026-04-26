@@ -37,8 +37,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Confirm Logout"),
-        content: const Text("Are you sure you want to log out?"),
+        title: Text("Confirm Logout", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to log out?", style: GoogleFonts.openSans()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -74,7 +74,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(title, style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 22)),
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           actions: [
@@ -150,7 +150,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: isSelected ? Colors.blueAccent : Colors.grey),
-          Text(label, style: TextStyle(color: isSelected ? Colors.blueAccent : Colors.grey, fontSize: 10)),
+          Text(label, style: GoogleFonts.openSans(color: isSelected ? Colors.blueAccent : Colors.grey, fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );
@@ -196,7 +196,7 @@ class DashboardHome extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Quick Insights", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text("Quick Insights", style: GoogleFonts.openSans(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
               Row(
                 children: [
@@ -206,7 +206,7 @@ class DashboardHome extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 30),
-              const Text("Management Modules", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text("Management Modules", style: GoogleFonts.openSans(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
               GridView.count(
                 crossAxisCount: 3,
@@ -244,10 +244,10 @@ class DashboardHome extends StatelessWidget {
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: color.withOpacity(0.1))),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 30),
+              Icon(icon, color: color, size: 35),
               const SizedBox(height: 8),
-              Text(count, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+              Text(count, style: GoogleFonts.openSans(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(title, style: GoogleFonts.openSans(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -269,9 +269,9 @@ class DashboardHome extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 28),
+            Icon(icon, color: color, size: 32),
             const SizedBox(height: 8),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+            Text(title, textAlign: TextAlign.center, style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
       ),

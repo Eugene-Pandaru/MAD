@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mad/utility.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -86,7 +87,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                       child: Text(
                         "Total Products: ${products.length}",
-                        style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal),
+                        style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.teal),
                       ),
                     ),
                     const Divider(height: 1),
@@ -98,7 +99,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                                 children: [
                                   Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
                                   const SizedBox(height: 10),
-                                  Text("No products found", style: GoogleFonts.openSans(color: Colors.grey)),
+                                  Text("No products found", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 16)),
                                 ],
                               ),
                             )
@@ -119,13 +120,13 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                                         decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: Colors.grey[100]),
                                         child: ClipRRect(borderRadius: BorderRadius.circular(10), child: _buildProductImage(product['image_url'])),
                                       ),
-                                      title: Text(product['name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+                                      title: Text(product['name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16)),
                                       subtitle: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text("${product['category']}", style: GoogleFonts.openSans(color: Colors.teal, fontSize: 12, fontWeight: FontWeight.w600)),
+                                          Text("${product['category']}", style: GoogleFonts.openSans(color: Colors.teal, fontSize: 14, fontWeight: FontWeight.w600)),
                                           Text("RM ${double.tryParse(product['price'].toString())?.toStringAsFixed(2) ?? '0.00'} • Stock: ${product['stock_quantity']}", 
-                                            style: GoogleFonts.openSans(fontSize: 13, color: Colors.grey[700])),
+                                            style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey[700])),
                                         ],
                                       ),
                                       trailing: Row(
@@ -160,10 +161,10 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Product?"),
-        content: const Text("Are you sure? This action cannot be undone and will remove the product from the catalog."),
+        title: Text("Delete Product?", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure? This action cannot be undone and will remove the product from the catalog.", style: GoogleFonts.openSans()),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.openSans())),
           ElevatedButton(
             onPressed: () async {
               try {
@@ -177,7 +178,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+            child: Text("Delete", style: GoogleFonts.openSans(color: Colors.white)),
           ),
         ],
       ),
@@ -186,6 +187,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
 
   void _showProductDialog(BuildContext context, {Map<String, dynamic>? product}) {
     final bool isEdit = product != null;
+    final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: isEdit ? product['name'] : "");
     final priceController = TextEditingController(text: isEdit ? product['price'].toString() : "");
     final stockController = TextEditingController(text: isEdit ? product['stock_quantity'].toString() : "");
@@ -200,75 +202,105 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(isEdit ? "Edit Product" : "Add New Product"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () async {
-                    final picker = ImagePicker();
-                    final image = await picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) setState(() { tempPickedFile = File(image.path); });
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        height: 120, width: double.infinity,
-                        decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey[300]!)),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: tempPickedFile != null 
-                              ? Image.file(tempPickedFile!, fit: BoxFit.cover) 
-                              : _buildProductImage(imageUrl),
+          title: Text(isEdit ? "Edit Product" : "Add New Product", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(source: ImageSource.gallery);
+                      if (image != null) setState(() { tempPickedFile = File(image.path); });
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 120, width: double.infinity,
+                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey[300]!)),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: tempPickedFile != null 
+                                ? Image.file(tempPickedFile!, fit: BoxFit.cover) 
+                                : _buildProductImage(imageUrl),
+                          ),
                         ),
-                      ),
-                      const CircleAvatar(
-                        backgroundColor: Colors.black26,
-                        radius: 20,
-                        child: Icon(Icons.camera_alt, color: Colors.white),
-                      ),
-                    ],
+                        const CircleAvatar(
+                          backgroundColor: Colors.black26,
+                          radius: 20,
+                          child: Icon(Icons.camera_alt, color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 15),
-                TextField(controller: nameController, decoration: _inputDeco("Product Name")),
-                const SizedBox(height: 10),
-                TextField(controller: priceController, decoration: _inputDeco("Price (RM)"), keyboardType: TextInputType.number),
-                const SizedBox(height: 10),
-                TextField(controller: stockController, decoration: _inputDeco("Initial Stock"), keyboardType: TextInputType.number),
-                const SizedBox(height: 10),
-                TextField(controller: descController, decoration: _inputDeco("Description"), maxLines: 3),
-                const SizedBox(height: 15),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(context: context, initialDate: selectedDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 3650)));
-                    if (picked != null) setState(() => selectedDate = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(10)),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(selectedDate == null ? "Select Expiry Date" : DateFormat('yyyy-MM-dd').format(selectedDate!)), const Icon(Icons.calendar_today, size: 20)]),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                    controller: nameController, 
+                    decoration: _inputDeco("Product Name"),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+                    validator: (val) => (val == null || val.trim().isEmpty) ? "Enter valid name" : null,
                   ),
-                ),
-                const SizedBox(height: 15),
-                DropdownButtonFormField<String>(
-                  value: category, decoration: _inputDeco("Category"),
-                  items: ['Medicine', 'Vitamin', 'Baby Care'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (val) => setState(() => category = val!),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: priceController, 
+                    decoration: _inputDeco("Price (RM)"), 
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return "Enter price";
+                      if (double.tryParse(val) == null || double.parse(val) <= 0) return "Price must be > 0";
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: stockController, 
+                    decoration: _inputDeco("Initial Stock"), 
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return "Enter stock";
+                      if (int.tryParse(val) == null || int.parse(val) <= 0) return "Stock must be > 0";
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: descController, 
+                    decoration: _inputDeco("Description"), 
+                    maxLines: 3,
+                    validator: (val) => (val == null || val.isEmpty) ? "Enter description" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(context: context, initialDate: selectedDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 3650)));
+                      if (picked != null) setState(() => selectedDate = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(10)),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(selectedDate == null ? "Select Expiry Date" : DateFormat('yyyy-MM-dd').format(selectedDate!), style: GoogleFonts.openSans()), const Icon(Icons.calendar_today, size: 20)]),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: category, decoration: _inputDeco("Category"),
+                    items: ['Medicine', 'Vitamin', 'Baby Care'].map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.openSans()))).toList(),
+                    onChanged: (val) => setState(() => category = val!),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.openSans())),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isEmpty || priceController.text.isEmpty || stockController.text.isEmpty) { 
-                  Utils.snackbar(context, "Fill all required fields", color: Colors.red); 
-                  return; 
-                }
+                if (!_formKey.currentState!.validate()) return;
                 
                 try {
                   if (tempPickedFile != null) {
@@ -282,11 +314,11 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                   }
                   
                   final data = {
-                    'name': nameController.text, 
+                    'name': nameController.text.trim(), 
                     'price': double.tryParse(priceController.text) ?? 0.0, 
                     'stock_quantity': int.tryParse(stockController.text) ?? 0, 
                     'category': category, 
-                    'description': descController.text, 
+                    'description': descController.text.trim(), 
                     'expiry_date': selectedDate != null ? DateFormat('yyyy-MM-dd').format(selectedDate!) : null, 
                     'image_url': imageUrl
                   };
@@ -303,7 +335,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                    Utils.snackbar(context, "Error: $e", color: Colors.red);
                 }
               },
-              child: const Text("Save"),
+              child: Text("Save", style: GoogleFonts.openSans()),
             ),
           ],
         ),
@@ -313,6 +345,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
 
   InputDecoration _inputDeco(String label) => InputDecoration(
     labelText: label,
+    labelStyle: GoogleFonts.openSans(),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
     contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
   );
