@@ -1,3 +1,5 @@
+//kh
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -16,10 +18,10 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   final supabase = Supabase.instance.client;
   final MapController _mapController = MapController();
   
-  // Center of Malaysia/KL
   final LatLng _center = const LatLng(3.1390, 101.6869);
-  List<Marker> _markers = [];
+  List<Map<String, dynamic>> _branches = [];
   bool _isLoading = true;
+  Map<String, dynamic>? _selectedBranch;
 
   @override
   void initState() {
@@ -30,26 +32,9 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   Future<void> _fetchPharmacyLocations() async {
     try {
       final data = await supabase.from('location').select();
-      final List<Map<String, dynamic>> locations = List<Map<String, dynamic>>.from(data);
-
       if (mounted) {
         setState(() {
-          _markers = locations.map((loc) {
-            return Marker(
-              point: LatLng(
-                double.parse(loc['latitude'].toString()),
-                double.parse(loc['longitude'].toString()),
-              ),
-              width: 50,
-              height: 50,
-              child: GestureDetector(
-                onTap: () {
-                  Utils.snackbar(context, "${loc['name']}\n${loc['address']}", color: const Color(0xFF1392AB));
-                },
-                child: const Icon(Icons.location_on, color: Colors.red, size: 40),
-              ),
-            );
-          }).toList();
+          _branches = List<Map<String, dynamic>>.from(data);
           _isLoading = false;
         });
       }
@@ -67,27 +52,179 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
         backgroundColor: const Color(0xFF1392AB),
         foregroundColor: Colors.white,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF1392AB)))
-          : FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _center,
-                initialZoom: 11.0,
-              ),
+          : Stack(
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.mad',
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _center,
+                    initialZoom: 11.0,
+                    onTap: (_, __) => setState(() => _selectedBranch = null),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.mad',
+                    ),
+                    MarkerLayer(
+                      markers: _branches.map((loc) {
+                        return Marker(
+                          point: LatLng(
+                            double.parse(loc['latitude'].toString()),
+                            double.parse(loc['longitude'].toString()),
+                          ),
+                          width: 50,
+                          height: 50,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() => _selectedBranch = loc);
+                              _mapController.move(
+                                LatLng(double.parse(loc['latitude'].toString()), double.parse(loc['longitude'].toString())),
+                                15.0,
+                              );
+                            },
+                            child: Icon(
+                              Icons.location_on,
+                              color: _selectedBranch?['id'] == loc['id'] ? Colors.blue : Colors.red,
+                              size: 40,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
-                MarkerLayer(markers: _markers),
+                if (_selectedBranch != null) _buildBranchPreview(),
               ],
             ),
+    );
+  }
+
+  Widget _buildBranchPreview() {
+    return Positioned(
+      bottom: 20,
+      left: 20,
+      right: 20,
+      child: Card(
+        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.store, color: Color(0xFF1392AB), size: 30),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_selectedBranch!['name'], style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(_selectedBranch!['address'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _showBranchDetails(_selectedBranch!),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1392AB),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text("View More"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBranchDetails(Map<String, dynamic> branch) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(25),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 20),
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(15)),
+                child: const Icon(Icons.image, size: 80, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              Text(branch['name'], style: GoogleFonts.openSans(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              _detailRow(Icons.location_on, "Address", branch['address']),
+              _detailRow(Icons.access_time, "Opening Hours", branch['opening_hours'] ?? "09:00 AM - 10:00 PM"),
+              _detailRow(Icons.phone, "Contact", branch['phone'] ?? "+60 123456789"),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 10),
+              Text("Description", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
+              Text(branch['description'] ?? "Our pharmacy provides high-quality healthcare services and authentic medicines. Our pharmacists are always here to help you.", style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: const Color(0xFF1392AB), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                Text(value, style: const TextStyle(fontSize: 15)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

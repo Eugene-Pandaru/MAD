@@ -1,3 +1,5 @@
+//kh
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -17,6 +19,25 @@ class NotificationService {
 
     tz.initializeTimeZones();
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  // Show immediate notification (Fake/Triggered on app open)
+  Future<void> showNotification(int id, String title, String body) async {
+    await flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'med_channel', 
+          'Medicine Alarms',
+          channelDescription: 'Channel for Medicine Reminders',
+          importance: Importance.max, 
+          priority: Priority.high,
+          playSound: true,
+        ),
+      ),
+    );
   }
 
   // Use this to trigger an alarm 10 seconds after adding a medicine (for testing)
