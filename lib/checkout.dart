@@ -16,13 +16,69 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   final supabase = Supabase.instance.client;
-  String deliveryAddress = "123, Jalan Pharmacy, Taman NoSakit, 56000 Kuala Lumpur";
+  String? deliveryAddress;
   String selectedShipping = "Standard";
   double shippingFee = 5.00;
 
   // Voucher Selection State
   Map<String, dynamic>? selectedShippingVoucher;
   Map<String, dynamic>? selectedDiscountVoucher;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🏠 Initialize address from Address 1 in database
+    deliveryAddress = Utils.currentUser?['address'];
+  }
+
+  void _showAddressSelectionDialog() {
+    final user = Utils.currentUser;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Select Delivery Address", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildAddressOption("Address 1", user?['address']),
+              _buildAddressOption("Address 2", user?['address2']),
+              _buildAddressOption("Address 3", user?['address3']),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.my_location, color: Color(0xFF1392AB)),
+                title: Text("Select from map", style: GoogleFonts.openSans(fontWeight: FontWeight.w600)),
+                onTap: () async {
+                  Navigator.pop(context); // Close dialog
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AddressPage()),
+                  );
+                  if (result != null && result is String) {
+                    setState(() => deliveryAddress = result);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressOption(String label, String? address) {
+    if (address == null || address.isEmpty) return const SizedBox.shrink();
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label, style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF1392AB))),
+      subtitle: Text(address, style: GoogleFonts.openSans(fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+      onTap: () {
+        setState(() => deliveryAddress = address);
+        Navigator.pop(context);
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,20 +145,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(
+                          color: (deliveryAddress == null || deliveryAddress!.isEmpty) 
+                              ? Colors.red.shade200 
+                              : Colors.grey.shade200
+                        ),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.location_on, color: Color(0xFF1392AB)),
                           const SizedBox(width: 15),
                           Expanded(
-                            child: Text(deliveryAddress, style: GoogleFonts.openSans(fontSize: 14, color: Colors.black87)),
+                            child: Text(
+                              (deliveryAddress == null || deliveryAddress!.isEmpty) 
+                                  ? "No delivery address set. Please add one." 
+                                  : deliveryAddress!, 
+                              style: GoogleFonts.openSans(
+                                fontSize: 14, 
+                                color: (deliveryAddress == null || deliveryAddress!.isEmpty) ? Colors.red : Colors.black87
+                              ),
+                            ),
                           ),
                           TextButton(
-                            onPressed: () async {
-                              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressPage()));
-                              if (result != null && result is String) setState(() => deliveryAddress = result);
-                            },
+                            onPressed: _showAddressSelectionDialog,
                             child: Text("Change", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
                           )
                         ],
@@ -133,7 +198,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     const SizedBox(height: 25),
 
-                    /// 3. Voucher Selection Section (NEW)
+                    /// 3. Voucher Selection Section
                     Text("Apply Vouchers", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     StreamBuilder<List<Map<String, dynamic>>>(
@@ -210,6 +275,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           elevation: 0,
                         ),
                         onPressed: () {
+                          // 🛡️ REQUIRED ADDRESS VALIDATION
+                          if (deliveryAddress == null || deliveryAddress!.isEmpty) {
+                            Utils.snackbar(context, "Please set a delivery address first!", color: Colors.red);
+                            return;
+                          }
+
                           // Combine voucher codes for the order
                           String? combinedCodes;
                           if (selectedShippingVoucher != null && selectedDiscountVoucher != null) {
@@ -224,9 +295,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               builder: (context) => PaymentPage(
                                 subtotal: subtotal - discountAmount,
                                 deliveryFee: effectiveShippingFee,
-                                deliveryAddress: deliveryAddress,
+                                deliveryAddress: deliveryAddress!,
                                 paymentType: "medicine",
-                                voucherCode: combinedCodes, // 👈 Pass to payment
+                                voucherCode: combinedCodes,
                               ),
                             ),
                           );

@@ -9,6 +9,7 @@ import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/redemption.dart';
 import 'package:mad/health_dashboard_screen.dart';
+import 'package:mad/myaddress.dart'; // 👈 Added import
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -63,11 +64,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 35, // 🛠️ Adjusted size to avoid overflow
+                            radius: 35,
                             backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
                             child: const Icon(Icons.person, size: 40, color: Color(0xFF1392AB)),
                           ),
-                          const SizedBox(width: 15), // 🛠️ Adjusted spacing
+                          const SizedBox(width: 15),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +76,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                 Text(
                                   user?['nickname'] ?? "Guest",
                                   style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis, // 🛠️ Handle long names
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   user?['email'] ?? "No Email",
@@ -105,7 +106,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.health_and_safety, color: Colors.white, size: 35), // 🛠️ Small icon adjustment
+                            const Icon(Icons.health_and_safety, color: Colors.white, size: 35),
                             const SizedBox(width: 15),
                             Expanded(
                               child: Column(
@@ -130,6 +131,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
                         setState(() {});
+                      },
+                    ),
+                    // 🏠 My Address Row (NEW)
+                    _buildProfileItem(
+                      icon: Icons.location_on_outlined,
+                      title: "My Address",
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAddressPage()));
+                        setState(() {}); // Update local session if address changed
                       },
                     ),
                     _buildProfileItem(

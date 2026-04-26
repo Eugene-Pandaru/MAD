@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class Utils {
   /// 👤 Logged-in User Data
@@ -15,9 +16,25 @@ class Utils {
     // ❌ Remove current snackbar
     messenger.clearSnackBars();
 
-    // ✅ Show only latest
+    // ✅ Show only latest with Open Sans style and modern floating design
     messenger.showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.openSans(
+            color: Colors.white, 
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating, // 👈 Floating behavior
+        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20), // 👈 Space from bottom/left/right
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // 👈 Curved borders
+        ),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 

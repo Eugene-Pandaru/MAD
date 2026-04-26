@@ -21,6 +21,7 @@ class _CartPageState extends State<CartPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text("Remove Item?", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
           content: Text("Do you want to remove ${CartManager.cartItems[index].name} from your cart?", style: GoogleFonts.openSans()),
           actions: [
@@ -34,6 +35,7 @@ class _CartPageState extends State<CartPage> {
                   CartManager.cartItems.removeAt(index);
                 });
                 Navigator.pop(context);
+                // 🛠️ Updated to use modern floating snackbar from Utils
                 Utils.snackbar(context, "Item removed", color: Colors.red);
               },
               child: Text("Remove", style: GoogleFonts.openSans(color: Colors.red, fontWeight: FontWeight.bold)),
