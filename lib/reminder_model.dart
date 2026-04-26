@@ -7,6 +7,7 @@ class Reminder {
   final String time;
   final bool isTaken;
   final String frequency; // 'Daily' or 'Weekly'
+  final bool isArchived;
 
   Reminder({
     this.id,
@@ -15,6 +16,7 @@ class Reminder {
     required this.time,
     this.isTaken = false,
     this.frequency = 'Daily',
+    this.isArchived = false,
   });
 
   // Convert for Supabase Insert
@@ -24,6 +26,7 @@ class Reminder {
     'reminder_time': time,
     'is_taken': isTaken,
     'frequency': frequency,
+    'is_archived': isArchived,
   };
 
   // Create from Supabase Response
@@ -34,6 +37,7 @@ class Reminder {
     time: json['reminder_time'] ?? '',
     isTaken: json['is_taken'] ?? false,
     frequency: json['frequency'] ?? 'Daily',
+    isArchived: json['is_archived'] ?? false,
   );
 }
 

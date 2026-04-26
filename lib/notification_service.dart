@@ -41,14 +41,28 @@ class NotificationService extends ChangeNotifier {
       },
     );
 
-    // Start a periodic check every 10 seconds for real-time responsiveness
+    // Start a periodic check every 5 seconds for immediate pop-out
     _checkTimer?.cancel();
-    _checkTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _checkTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       checkOverdueReminders();
     });
     
     // Initial check
     checkOverdueReminders();
+  }
+
+  // Robust time parsing to handle "9:00 AM", "09:00 AM", or "21:00"
+  DateTime? _parseTime(String timeStr) {
+    try {
+      return DateFormat.jm().parse(timeStr.trim());
+    } catch (e) {
+      try {
+        return DateFormat.Hm().parse(timeStr.trim());
+      } catch (e2) {
+        debugPrint("Failed to parse time: $timeStr");
+        return null;
+      }
+    }
   }
 
   Future<void> checkOverdueReminders() async {
@@ -58,6 +72,10 @@ class NotificationService extends ChangeNotifier {
     final userId = Utils.currentUser?['id'];
     if (userId == null) {
       _isChecking = false;
+      if (overdueReminder != null) {
+        overdueReminder = null;
+        notifyListeners();
+      }
       return;
     }
 
@@ -72,24 +90,16 @@ class NotificationService extends ChangeNotifier {
       if (data != null) {
         final List<Reminder> reminders = (data as List).map((json) => Reminder.fromJson(json)).toList();
         final now = DateTime.now();
-        final DateFormat format = DateFormat.jm();
 
         Reminder? found;
         for (var r in reminders) {
-          try {
-            // Clean the time string just in case
-            String timeStr = r.time.trim();
-            final DateTime parsedTime = format.parse(timeStr);
+          final parsedTime = _parseTime(r.time);
+          if (parsedTime != null) {
             final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
-            
-            // Check if it's past due today
             if (now.isAfter(scheduledTimeToday)) {
                found = r;
-               debugPrint("DUE NOW: ${r.medicineName} at ${r.time}");
                break;
             }
-          } catch (e) {
-            debugPrint("Time parse error for ${r.medicineName}: $e");
           }
         }
 
@@ -140,8 +150,8 @@ class NotificationService extends ChangeNotifier {
 
   Future<void> scheduleMedicineReminder(int id, String name, String dose, String timeStr, String frequency) async {
     try {
-      final DateFormat format = DateFormat.jm();
-      final DateTime parsedTime = format.parse(timeStr);
+      final parsedTime = _parseTime(timeStr);
+      if (parsedTime == null) return;
       
       final now = tz.TZDateTime.now(tz.local);
       var scheduledDate = tz.TZDateTime(

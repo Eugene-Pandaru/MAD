@@ -19,6 +19,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
   List<Reminder> _reminders = [];
   bool _isLoading = true;
   bool _isEditMode = false;
+  bool _showArchived = false;
 
   @override
   void initState() {
@@ -43,9 +44,9 @@ class _ReminderScreenState extends State<ReminderScreen> {
           _isLoading = false;
         });
         
-        // Schedule all reminders
+        // Schedule active reminders
         for (var reminder in _reminders) {
-          if (!reminder.isTaken) {
+          if (!reminder.isTaken && !reminder.isArchived) {
             NotificationService().scheduleMedicineReminder(
               reminder.id!,
               reminder.medicineName,
@@ -53,6 +54,8 @@ class _ReminderScreenState extends State<ReminderScreen> {
               reminder.time,
               reminder.frequency,
             );
+          } else {
+            NotificationService().cancelNotification(reminder.id!);
           }
         }
       }
@@ -92,14 +95,6 @@ class _ReminderScreenState extends State<ReminderScreen> {
     try {
       final newVal = !item.isTaken;
       await supabase.from('reminders').update({'is_taken': newVal}).eq('id', item.id!);
-      
-      if (newVal) {
-        NotificationService().cancelNotification(item.id!);
-      } else {
-        NotificationService().scheduleMedicineReminder(
-          item.id!, item.medicineName, item.dosage, item.time, item.frequency
-        );
-      }
       _fetchReminders();
     } catch (e) {
       debugPrint("Toggle error: $e");
@@ -115,6 +110,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
     final nameController = TextEditingController(text: existing?.medicineName);
     final doseController = TextEditingController(text: existing?.dosage);
     String selectedFreq = existing?.frequency ?? 'Daily';
+    bool isArchived = existing?.isArchived ?? false;
     
     List<TimeOfDay> selectedTimes = [];
     
@@ -173,7 +169,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(time.format(context)),
-                    trailing: selectedTimes.length > 1 ? IconButton(
+                    trailing: (selectedTimes.length > 1 && existing == null) ? IconButton(
                       icon: const Icon(Icons.remove_circle, color: Colors.red),
                       onPressed: () => setDialogState(() => selectedTimes.removeAt(idx)),
                     ) : const Icon(Icons.access_time),
@@ -192,6 +188,16 @@ class _ReminderScreenState extends State<ReminderScreen> {
                   }).toList(),
                   onChanged: (val) => setDialogState(() => selectedFreq = val!),
                 ),
+                if (existing != null) ...[
+                  const Divider(height: 30),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Archive (No more reminds)", style: TextStyle(fontSize: 14)),
+                    value: isArchived,
+                    activeColor: const Color(0xFF1392AB),
+                    onChanged: (val) => setDialogState(() => isArchived = val),
+                  ),
+                ],
               ],
             ),
           ),
@@ -220,6 +226,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                         'frequency': selectedFreq,
                         'user_id': userId,
                         'is_taken': false,
+                        'is_archived': false,
                       };
                       await supabase.from('reminders').insert(reminderData);
                     }
@@ -230,6 +237,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                       'reminder_time': selectedTimes.first.format(context),
                       'frequency': selectedFreq,
                       'user_id': userId,
+                      'is_archived': isArchived,
                     };
                     await supabase.from('reminders').update(reminderData).eq('id', existing.id!);
                   }
@@ -266,11 +274,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use KL Timezone for validation as requested
     final now = tz.TZDateTime.now(tz.local);
     final DateFormat format = DateFormat.jm();
 
-    final missed = _reminders.where((r) {
+    final activeReminders = _reminders.where((r) => !r.isArchived).toList();
+    final archivedReminders = _reminders.where((r) => r.isArchived).toList();
+
+    final missed = activeReminders.where((r) {
       if (r.isTaken) return false;
       try {
         final DateTime parsedTime = format.parse(r.time);
@@ -281,7 +291,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
       }
     }).toList();
 
-    final upcoming = _reminders.where((r) {
+    final upcoming = activeReminders.where((r) {
       if (r.isTaken) return false;
       try {
         final DateTime parsedTime = format.parse(r.time);
@@ -292,7 +302,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
       }
     }).toList();
 
-    final taken = _reminders.where((r) => r.isTaken).toList();
+    final taken = activeReminders.where((r) => r.isTaken).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
@@ -325,6 +335,21 @@ class _ReminderScreenState extends State<ReminderScreen> {
                   const SizedBox(height: 30),
                   _buildSectionHeader("Already Taken", Colors.green),
                   ...taken.map((r) => _buildReminderTile(r)),
+                  
+                  if (archivedReminders.isNotEmpty) ...[
+                    const SizedBox(height: 40),
+                    const Divider(),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text("Archived Medicines", style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      trailing: IconButton(
+                        icon: Icon(_showArchived ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+                        onPressed: () => setState(() => _showArchived = !_showArchived),
+                      ),
+                    ),
+                    if (_showArchived)
+                      ...archivedReminders.map((r) => _buildReminderTile(r, isArchived: true)),
+                  ],
                 ],
               ),
             ),
@@ -349,31 +374,34 @@ class _ReminderScreenState extends State<ReminderScreen> {
     );
   }
 
-  Widget _buildReminderTile(Reminder item, {bool isMissed = false}) {
+  Widget _buildReminderTile(Reminder item, {bool isMissed = false, bool isArchived = false}) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: isArchived ? Colors.grey[100] : Colors.white,
       child: ListTile(
         onTap: _isEditMode ? () => _addOrUpdateReminder(existing: item) : null,
-        leading: _isEditMode 
-            ? IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteReminder(item.id!))
-            : Checkbox(
-                value: item.isTaken,
-                activeColor: const Color(0xFF1392AB),
-                onChanged: (_) => _toggleTaken(item),
-              ),
+        leading: isArchived 
+            ? (_isEditMode ? IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteReminder(item.id!)) : const Icon(Icons.archive_outlined, color: Colors.grey))
+            : (_isEditMode 
+                ? IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteReminder(item.id!))
+                : Checkbox(
+                    value: item.isTaken,
+                    activeColor: const Color(0xFF1392AB),
+                    onChanged: (_) => _toggleTaken(item),
+                  )),
         title: Text(
           item.medicineName, 
           style: GoogleFonts.openSans(
             fontWeight: FontWeight.bold, 
-            decoration: item.isTaken ? TextDecoration.lineThrough : null,
-            color: isMissed ? Colors.red : null,
+            decoration: (item.isTaken || isArchived) ? TextDecoration.lineThrough : null,
+            color: isArchived ? Colors.grey : (isMissed ? Colors.red : null),
           )
         ),
         subtitle: Text(
           "${item.dosage} at ${item.time} (${item.frequency})",
-          style: TextStyle(color: isMissed ? Colors.red.withOpacity(0.7) : null),
+          style: TextStyle(color: isArchived ? Colors.grey : (isMissed ? Colors.red.withOpacity(0.7) : null)),
         ),
         trailing: _isEditMode ? const Icon(Icons.chevron_right) : (isMissed ? const Icon(Icons.warning, color: Colors.red, size: 20) : null),
       ),

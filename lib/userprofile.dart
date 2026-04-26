@@ -9,7 +9,9 @@ import 'package:mad/utility.dart';
 import 'package:mad/vouchers.dart';
 import 'package:mad/redemption.dart';
 import 'package:mad/health_dashboard_screen.dart';
-import 'package:mad/myaddress.dart'; // 👈 Added import
+import 'package:mad/myaddress.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mad/reminder_screen.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -19,10 +21,13 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
+  final supabase = Supabase.instance.client;
+
   @override
   Widget build(BuildContext context) {
     final user = Utils.currentUser;
     final profileUrl = user?['profile_url'];
+    final userId = user?['id'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -64,7 +69,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         children: [
                           CircleAvatar(
                             radius: 35,
-                            backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                            backgroundColor: const Color(0xFF1392AB).withOpacity(0.1),
                             backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
                                 ? NetworkImage(profileUrl)
                                 : null,
@@ -93,11 +98,56 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
+
+                    // 💊 MEDICINE REMINDER STATUS BUTTON
+                    if (userId != null)
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: supabase.from('reminders').stream(primaryKey: ['id']).eq('user_id', userId),
+                        builder: (context, snapshot) {
+                          int pendingCount = 0;
+                          int activeCount = 0;
+                          if (snapshot.hasData) {
+                            // Filter out archived medicines
+                            final activeReminders = snapshot.data!.where((item) => item['is_archived'] == false).toList();
+                            activeCount = activeReminders.length;
+                            pendingCount = activeReminders.where((item) => item['is_taken'] == false).length;
+                          }
+                          
+                          // Gray if all taken OR no active reminders at all
+                          final bool allTaken = activeCount == 0 || pendingCount == 0;
+                          
+                          return GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderScreen())),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: allTaken ? Colors.grey : Colors.orangeAccent,
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5)],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(allTaken ? Icons.check_circle_outline : Icons.notification_important_outlined, color: Colors.white),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    allTaken ? "All medicines taken" : "Reminders: $pendingCount left today",
+                                    style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                    const SizedBox(height: 20),
 
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => HealthDashboard()));
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const HealthDashboard()));
                       },
                       child: Container(
                         width: double.infinity,
@@ -105,7 +155,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF1392AB),
                           borderRadius: BorderRadius.circular(25),
-                          boxShadow: [BoxShadow(color: const Color(0xFF1392AB).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 5))],
+                          boxShadow: [BoxShadow(color: const Color(0xFF1392AB).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
                         ),
                         child: Row(
                           children: [
@@ -125,7 +175,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     _buildProfileItem(
                       icon: Icons.edit_outlined,
@@ -135,13 +185,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         if (mounted) setState(() {});
                       },
                     ),
-                    // 🏠 My Address Row (NEW)
                     _buildProfileItem(
                       icon: Icons.location_on_outlined,
                       title: "My Address",
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAddressPage()));
-                        setState(() {}); // Update local session if address changed
+                        setState(() {});
                       },
                     ),
                     _buildProfileItem(
