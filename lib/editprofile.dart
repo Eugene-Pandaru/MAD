@@ -278,7 +278,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 if (mounted) setState(() => isSaving = false);
                               }
                             } else {
-                              if (currentPasswordController.text != user?['password']) {
+                              // 🔑 Failed attempts only if password field is NOT empty
+                              if (currentPasswordController.text.isNotEmpty && currentPasswordController.text != user?['password']) {
                                 _failedAttempts++;
                                 if (_failedAttempts >= 3) {
                                   Utils.snackbar(context, "Too many failed attempts. Logging out...", color: Colors.red);
