@@ -60,7 +60,33 @@ class _ReminderScreenState extends State<ReminderScreen> {
     }
   }
 
+  Future<bool?> _showConfirmDialog(String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+        content: Text(content),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              title.contains("Delete") ? "Delete" : "Confirm",
+              style: TextStyle(color: title.contains("Delete") ? Colors.red : const Color(0xFF1392AB)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _toggleTaken(Reminder item) async {
+    final confirm = await _showConfirmDialog(
+      item.isTaken ? "Mark as Haven't?" : "Mark as Taken?",
+      "Are you sure you want to change the status of ${item.medicineName}?"
+    );
+    if (confirm != true) return;
+
     try {
       final newVal = !item.isTaken;
       await supabase.from('reminders').update({'is_taken': newVal}).eq('id', item.id!);
@@ -78,12 +104,19 @@ class _ReminderScreenState extends State<ReminderScreen> {
     }
   }
 
+  bool _isValidDosage(String value) {
+    if (value.isEmpty) return false;
+    // Check if it contains at least one digit
+    return RegExp(r'\d').hasMatch(value);
+  }
+
   Future<void> _addOrUpdateReminder({Reminder? existing}) async {
     final nameController = TextEditingController(text: existing?.medicineName);
     final doseController = TextEditingController(text: existing?.dosage);
     String selectedFreq = existing?.frequency ?? 'Daily';
     
-    TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
+    List<TimeOfDay> selectedTimes = [];
+    
     if (existing != null) {
       try {
         final parts = existing.time.split(' ');
@@ -94,10 +127,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
           if (parts[1] == 'PM' && hour < 12) hour += 12;
           if (parts[1] == 'AM' && hour == 12) hour = 0;
         }
-        selectedTime = TimeOfDay(hour: hour, minute: minute);
+        selectedTimes.add(TimeOfDay(hour: hour, minute: minute));
       } catch (e) {
         debugPrint("Time parse error: $e");
+        selectedTimes.add(const TimeOfDay(hour: 9, minute: 0));
       }
+    } else {
+      selectedTimes.add(const TimeOfDay(hour: 9, minute: 0));
     }
 
     showDialog(
@@ -109,18 +145,44 @@ class _ReminderScreenState extends State<ReminderScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Medicine Name")),
-                TextField(controller: doseController, decoration: const InputDecoration(labelText: "Dosage (e.g. 1 pill)")),
-                const SizedBox(height: 15),
-                ListTile(
-                  title: const Text("Time"),
-                  subtitle: Text(selectedTime.format(context)),
-                  trailing: const Icon(Icons.access_time),
-                  onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: selectedTime);
-                    if (picked != null) setDialogState(() => selectedTime = picked);
-                  },
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: "Medicine Name", hintText: "e.g. Aspirin")),
+                TextField(
+                  controller: doseController, 
+                  decoration: const InputDecoration(labelText: "Dosage (Quantity required)", hintText: "e.g. 2 pills or 10ml"),
+                  keyboardType: TextInputType.text,
                 ),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Reminder Times:", style: TextStyle(fontWeight: FontWeight.bold)),
+                    if (existing == null) 
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFF1392AB)),
+                        onPressed: () async {
+                          final picked = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 9, minute: 0));
+                          if (picked != null) setDialogState(() => selectedTimes.add(picked));
+                        },
+                      ),
+                  ],
+                ),
+                ...selectedTimes.asMap().entries.map((entry) {
+                  int idx = entry.key;
+                  TimeOfDay time = entry.value;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(time.format(context)),
+                    trailing: selectedTimes.length > 1 ? IconButton(
+                      icon: const Icon(Icons.remove_circle, color: Colors.red),
+                      onPressed: () => setDialogState(() => selectedTimes.removeAt(idx)),
+                    ) : const Icon(Icons.access_time),
+                    onTap: () async {
+                      final picked = await showTimePicker(context: context, initialTime: time);
+                      if (picked != null) setDialogState(() => selectedTimes[idx] = picked);
+                    },
+                  );
+                }).toList(),
+                const SizedBox(height: 10),
                 DropdownButton<String>(
                   value: selectedFreq,
                   isExpanded: true,
@@ -136,28 +198,44 @@ class _ReminderScreenState extends State<ReminderScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  final userId = Utils.currentUser?['id'];
-                  final reminderData = {
-                    'medicine_name': nameController.text,
-                    'dosage': doseController.text,
-                    'reminder_time': selectedTime.format(context),
-                    'frequency': selectedFreq,
-                    'user_id': userId,
-                    'is_taken': false,
-                  };
+                if (nameController.text.isEmpty) {
+                  Utils.snackbar(context, "Please enter medicine name", color: Colors.orange);
+                  return;
+                }
+                if (!_isValidDosage(doseController.text)) {
+                  Utils.snackbar(context, "Please enter a valid dosage (must include quantity, e.g. 1 pill)", color: Colors.orange);
+                  return;
+                }
 
-                  try {
-                    if (existing == null) {
+                final userId = Utils.currentUser?['id'];
+                
+                try {
+                  if (existing == null) {
+                    for (var time in selectedTimes) {
+                      final reminderData = {
+                        'medicine_name': nameController.text,
+                        'dosage': doseController.text,
+                        'reminder_time': time.format(context),
+                        'frequency': selectedFreq,
+                        'user_id': userId,
+                        'is_taken': false,
+                      };
                       await supabase.from('reminders').insert(reminderData);
-                    } else {
-                      await supabase.from('reminders').update(reminderData).eq('id', existing.id!);
                     }
-                    _fetchReminders();
-                    Navigator.pop(ctx);
-                  } catch (e) {
-                    Utils.snackbar(context, "Error: $e", color: Colors.red);
+                  } else {
+                    final reminderData = {
+                      'medicine_name': nameController.text,
+                      'dosage': doseController.text,
+                      'reminder_time': selectedTimes.first.format(context),
+                      'frequency': selectedFreq,
+                      'user_id': userId,
+                    };
+                    await supabase.from('reminders').update(reminderData).eq('id', existing.id!);
                   }
+                  _fetchReminders();
+                  Navigator.pop(ctx);
+                } catch (e) {
+                  Utils.snackbar(context, "Error: $e", color: Colors.red);
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1392AB)),
@@ -170,6 +248,12 @@ class _ReminderScreenState extends State<ReminderScreen> {
   }
 
   Future<void> _deleteReminder(int id) async {
+    final confirm = await _showConfirmDialog(
+      "Delete Medicine?",
+      "Are you sure you want to delete this reminder permanently?"
+    );
+    if (confirm != true) return;
+
     try {
       await supabase.from('reminders').delete().match({'id': id});
       NotificationService().cancelNotification(id);
