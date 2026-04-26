@@ -14,7 +14,7 @@ class PaymentPage extends StatefulWidget {
   final String? pharmacistName;
   final String? apptDate;
   final String? apptTime;
-  final String? voucherCode; // 👈 Add this
+  final String? voucherCode;
 
   const PaymentPage({
     super.key,
@@ -25,7 +25,7 @@ class PaymentPage extends StatefulWidget {
     this.pharmacistName,
     this.apptDate,
     this.apptTime,
-    this.voucherCode, // 👈
+    this.voucherCode,
   });
 
   @override
@@ -72,15 +72,36 @@ class _PaymentPageState extends State<PaymentPage> {
         await _saveAppointmentToDatabase(finalMethodLabel);
       }
 
+      // 🎁 Add Points logic
+      await _addPointsToUser();
+
       if (!mounted) return;
       setState(() => isProcessing = false);
       _showSuccessDialog(finalMethodLabel);
 
     } catch (e) {
-      setState(() => isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      if (mounted) {
+        setState(() => isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _addPointsToUser() async {
+    final userId = Utils.currentUser?['id'];
+    if (userId == null) return;
+
+    // Calculation: RM 1 = 10 pts
+    final int pointsEarned = (totalAmount * 10).floor();
+    
+    if (pointsEarned > 0) {
+      await Supabase.instance.client.from('points').insert({
+        'user_id': userId,
+        'points_amount': pointsEarned,
+        'reason': widget.paymentType == "medicine" ? 'Purchase: Medicine' : 'Purchase: Appointment',
+      });
     }
   }
 
@@ -112,8 +133,8 @@ class _PaymentPageState extends State<PaymentPage> {
       'delivery_address': widget.deliveryAddress,
       'status': 'Paid',
       'payment_method': method,
-      'delivery_status': 'REQUESTING',
-      'voucher_code': widget.voucherCode, // 👈 Save the code
+      'delivery_status': 'PENDING',
+      'voucher_code': widget.voucherCode,
       'items': CartManager.cartItems.map((item) => {
         'name': item.name,
         'price': item.price,
@@ -142,7 +163,7 @@ class _PaymentPageState extends State<PaymentPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: Text("Payment Successful via $method!"),
+        content: Text("Payment Successful via $method! Points added to your account."),
         actions: [
           Center(
             child: ElevatedButton(
