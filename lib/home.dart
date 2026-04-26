@@ -23,11 +23,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final supabase = Supabase.instance.client;
-  final PageController _promotionController = PageController();
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
-  int _currentPromoPage = 0;
   List<Map<String, dynamic>> _searchResults = [];
   
   late Future<List<Map<String, dynamic>>> _initialProductsFuture;
@@ -43,7 +42,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _promotionController.dispose();
+    _searchFocusNode.dispose();
     _removeOverlay();
     super.dispose();
   }
@@ -113,10 +112,11 @@ class _HomePageState extends State<HomePage> {
                       itemCount: _searchResults.length,
                       itemBuilder: (context, index) {
                         final product = _searchResults[index];
+                        double price = double.tryParse(product['price'].toString()) ?? 0.0;
                         return ListTile(
                           leading: Image.network(product['image_url'], width: 40, height: 40, fit: BoxFit.cover),
                           title: Text(product['name'], style: GoogleFonts.openSans(fontSize: 14)),
-                          subtitle: Text("RM ${product['price']}", style: GoogleFonts.openSans(fontSize: 12, color: const Color(0xFF1392AB))),
+                          subtitle: Text("RM ${price.toStringAsFixed(2)}", style: GoogleFonts.openSans(fontSize: 12, color: const Color(0xFF1392AB))),
                           onTap: () {
                             _searchController.clear();
                             _removeOverlay();
@@ -133,10 +133,56 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _navigateTo(Widget page) async {
+    _searchFocusNode.unfocus(); 
+    _removeOverlay(); 
     await Navigator.push(context, MaterialPageRoute(builder: (context) => page));
-    if (mounted) {
-      setState(() {}); 
-    }
+    if (mounted) setState(() {}); 
+  }
+
+  void _showQRCodeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Center(child: Text("My QR Code", style: GoogleFonts.openSans(fontWeight: FontWeight.bold))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/myqr.jpeg',
+                  width: 250,
+                  height: 250,
+                  fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => const Icon(Icons.qr_code_2, size: 200, color: Colors.grey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text("Scan at the counter to earn points.", style: GoogleFonts.openSans(fontSize: 14, color: Colors.grey)),
+          ],
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1392AB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text("Close", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          )
+        ],
+      ),
+    );
   }
 
   Future<bool> _showLogoutConfirmation() async {
@@ -164,7 +210,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final String nickname = Utils.currentUser?['nickname'] ?? "User";
-    final String? profileUrl = Utils.currentUser?['profile_url'];
     final userId = Utils.currentUser?['id'];
 
     return PopScope(
@@ -184,19 +229,14 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 🟢 Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      const CircleAvatar(
                         radius: 30,
-                        backgroundColor: const Color(0xFF1392AB).withValues(alpha: 0.1),
-                        backgroundImage: (profileUrl != null && profileUrl.isNotEmpty && profileUrl.startsWith('http'))
-                            ? NetworkImage(profileUrl)
-                            : null,
-                        child: (profileUrl == null || profileUrl.isEmpty || !profileUrl.startsWith('http'))
-                            ? const Icon(Icons.person, size: 30, color: Color(0xFF1392AB))
-                            : null,
+                        backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -238,6 +278,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
       
+                // 🟢 Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: CompositedTransformTarget(
@@ -250,6 +291,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: TextField(
                         controller: _searchController,
+                        focusNode: _searchFocusNode,
                         decoration: InputDecoration(
                           hintText: "Search a Product",
                           hintStyle: GoogleFonts.openSans(),
@@ -259,6 +301,7 @@ class _HomePageState extends State<HomePage> {
                             icon: const Icon(Icons.close, color: Colors.grey, size: 20),
                             onPressed: () {
                               _searchController.clear();
+                              _searchFocusNode.unfocus();
                               _removeOverlay();
                             },
                           ),
@@ -271,45 +314,70 @@ class _HomePageState extends State<HomePage> {
       
                 const SizedBox(height: 25),
       
+                // 🟢 My QR Box (Clickable with Shadow)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SizedBox(
-                    height: 160,
-                    child: PageView(
-                      controller: _promotionController,
-                      onPageChanged: (index) => setState(() => _currentPromoPage = index),
-                      children: [
-                        buildPromoBanner("5.5 Mega Sale", "Get up to 50% off on selected items!", const Color(0xFF1392AB), 'https://cdn-icons-png.flaticon.com/512/2769/2769257.png'),
-                        buildPromoBanner("Baby Care Promo", "Buy 3 Free 1 on all baby essentials.", Colors.teal.shade400, 'https://cdn-icons-png.flaticon.com/512/2361/2361131.png'),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(2, (index) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: 8,
-                      height: 8,
+                  child: GestureDetector(
+                    onTap: _showQRCodeDialog,
+                    child: Container(
+                      width: double.infinity,
+                      height: 160,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentPromoPage == index ? const Color(0xFF1392AB) : Colors.grey.shade300,
+                        color: const Color(0xFF1392AB),
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1392AB).withValues(alpha: 0.35),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
                       ),
-                    )),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "My QR",
+                                  style: GoogleFonts.openSans(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Click to show your QR code and earn points at counter.",
+                                  style: GoogleFonts.openSans(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          const Icon(Icons.qr_code_2, size: 100, color: Colors.white),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
       
                 const SizedBox(height: 25),
       
+                // 🟢 Quick Links
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text("Quick Links", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("See All", style: GoogleFonts.openSans(color: Colors.grey.shade600, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -320,24 +388,17 @@ class _HomePageState extends State<HomePage> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(left: 20),
                     children: [
-                      buildCategoryBox("Location", Icons.location_on, const Color(0xFF8DC6BC), onTap: () {
-                         _navigateTo(const PharmacyMapScreen());
-                      }),
-                      buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF8DC6BC), onTap: () {
-                        _navigateTo(const ChatBotPage());
-                      }),
-                      buildCategoryBox("Rewards", Icons.card_giftcard, const Color(0xFF8DC6BC), onTap: () {
-                         _navigateTo(const RewardsPage());
-                      }),
-                      buildCategoryBox("Vouchers", Icons.confirmation_number, const Color(0xFF8DC6BC), onTap: () {
-                         _navigateTo(const VouchersPage());
-                      }),
+                      buildCategoryBox("Location", Icons.location_on, const Color(0xFF1D4C44), onTap: () => _navigateTo(const PharmacyMapScreen())),
+                      buildCategoryBox("Pharmacy Bot", Icons.smart_toy, const Color(0xFF1D4C44), onTap: () => _navigateTo(const ChatBotPage())),
+                      buildCategoryBox("Rewards", Icons.card_giftcard, const Color(0xFF1D4C44), onTap: () => _navigateTo(const RewardsPage())),
+                      buildCategoryBox("Vouchers", Icons.confirmation_number, const Color(0xFF1D4C44), onTap: () => _navigateTo(const VouchersPage())),
                     ],
                   ),
                 ),
       
                 const SizedBox(height: 25),
       
+                // 🟢 All Products
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -357,7 +418,7 @@ class _HomePageState extends State<HomePage> {
                   future: _initialProductsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFF1392AB)));
                     }
                     final products = snapshot.data ?? [];
                     return ListView.builder(
@@ -367,6 +428,7 @@ class _HomePageState extends State<HomePage> {
                       itemCount: products.length,
                       itemBuilder: (context, index) {
                         final p = products[index];
+                        double price = double.tryParse(p['price'].toString()) ?? 0.0;
                         return GestureDetector(
                           onTap: () => _navigateTo(ProductDetailsPage(product: p)),
                           child: Container(
@@ -375,6 +437,13 @@ class _HomePageState extends State<HomePage> {
                             decoration: BoxDecoration(
                               color: Colors.grey.shade50,
                               borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 8),
+                                )
+                              ],
                             ),
                             child: Row(
                               children: [
@@ -389,7 +458,7 @@ class _HomePageState extends State<HomePage> {
                                     children: [
                                       Text(p['name'], style: GoogleFonts.openSans(fontSize: 16, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 5),
-                                      Text("RM ${p['price']}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
+                                      Text("RM ${price.toStringAsFixed(2)}", style: GoogleFonts.openSans(color: const Color(0xFF1392AB), fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 5),
                                       Text(p['category'] ?? "General", style: GoogleFonts.openSans(color: Colors.grey, fontSize: 12)),
                                     ],
@@ -401,7 +470,7 @@ class _HomePageState extends State<HomePage> {
                                     backgroundColor: const Color(0xFF1392AB),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
-                                  child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12)),
+                                  child: Text("Buy", style: GoogleFonts.openSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
@@ -450,36 +519,23 @@ class _HomePageState extends State<HomePage> {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Widget buildPromoBanner(String title, String subtitle, Color color, String imageUrl) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.openSans(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                SizedBox(width: 180, child: Text(subtitle, style: GoogleFonts.openSans(color: Colors.white70, fontSize: 12))),
-              ],
-            ),
-          ),
-          Positioned(right: 10, bottom: 10, child: Image.network(imageUrl, height: 100, errorBuilder: (c, e, s) => const Icon(Icons.shopping_bag, size: 80, color: Colors.white24))),
-        ],
-      ),
-    );
-  }
-
   Widget buildCategoryBox(String label, IconData icon, Color color, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 120,
         margin: const EdgeInsets.only(right: 15),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(15)),
+        decoration: BoxDecoration(
+          color: color, 
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 8),
+            )
+          ],
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
