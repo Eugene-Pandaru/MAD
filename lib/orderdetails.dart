@@ -9,7 +9,9 @@ class OrderDetailsPage extends StatelessWidget {
   // 🎨 Helper to get Delivery Status color
   Color _getStatusColor(String status) {
     switch (status.toUpperCase()) {
-      case 'PENDING':
+      case 'REQUESTING':
+        return Colors.deepPurple;
+      case 'PACKAGING':
         return Colors.orange;
       case 'DELIVERING':
         return Colors.blue;
@@ -27,8 +29,10 @@ class OrderDetailsPage extends StatelessWidget {
     final List<dynamic> items = order['items'] ?? [];
 
     // Fetch values from the order map
-    double deliveryFee = double.tryParse(order['delivery_fee']?.toString() ?? '0') ?? 0.0;
-    double grandTotal = double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0.0;
+    double deliveryFee =
+        double.tryParse(order['delivery_fee']?.toString() ?? '0') ?? 0.0;
+    double grandTotal =
+        double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0.0;
 
     // Calculate subtotal from the items list
     double calculatedSubtotal = items.fold(0.0, (sum, item) {
@@ -37,7 +41,9 @@ class OrderDetailsPage extends StatelessWidget {
 
     String deliveryStatus = order['delivery_status'] ?? 'PENDING';
     String orderStatus = order['status'] ?? 'Paid';
-    Color orderStatusColor = (orderStatus == "Cancelled") ? Colors.red : const Color(0xFF003366);
+    Color orderStatusColor = (orderStatus == "Cancelled")
+        ? Colors.red
+        : const Color(0xFF003366);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -93,16 +99,28 @@ class OrderDetailsPage extends StatelessWidget {
                                       color: Color(0xFF003366),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                                    child: const Icon(
+                                      Icons.receipt_long,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
                                   const SizedBox(width: 15),
-                                  Text("ORDER #${order['id'] ?? 'N/A'}",
-                                      style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 18)),
+                                  Text(
+                                    "ORDER #${order['id'] ?? 'N/A'}",
+                                    style: GoogleFonts.openSans(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
                                 ],
                               ),
                               // 🟢 Order Status Chip
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
                                   color: orderStatusColor,
                                   borderRadius: BorderRadius.circular(20),
@@ -119,8 +137,13 @@ class OrderDetailsPage extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 15),
-                          Text("Ordered on: ${order['created_at']?.toString().split('T')[0] ?? 'N/A'}",
-                              style: GoogleFonts.openSans(color: Colors.black54, fontSize: 14)),
+                          Text(
+                            "Ordered on: ${order['created_at']?.toString().split('T')[0] ?? 'N/A'}",
+                            style: GoogleFonts.openSans(
+                              color: Colors.black54,
+                              fontSize: 14,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -140,15 +163,26 @@ class OrderDetailsPage extends StatelessWidget {
                         children: [
                           // Delivery Status Chip
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(deliveryStatus).withValues(alpha: 0.1),
+                              color: _getStatusColor(
+                                deliveryStatus,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: _getStatusColor(deliveryStatus)),
+                              border: Border.all(
+                                color: _getStatusColor(deliveryStatus),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.local_shipping, size: 16, color: _getStatusColor(deliveryStatus)),
+                                Icon(
+                                  Icons.local_shipping,
+                                  size: 16,
+                                  color: _getStatusColor(deliveryStatus),
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   deliveryStatus.toUpperCase(),
@@ -165,7 +199,10 @@ class OrderDetailsPage extends StatelessWidget {
                           // Payment Method Info
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.blueGrey.shade50,
                                 borderRadius: BorderRadius.circular(12),
@@ -173,7 +210,11 @@ class OrderDetailsPage extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.account_balance_wallet, size: 16, color: Color(0xFF003366)),
+                                  const Icon(
+                                    Icons.account_balance_wallet,
+                                    size: 16,
+                                    color: Color(0xFF003366),
+                                  ),
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
@@ -202,23 +243,38 @@ class OrderDetailsPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFF1392AB).withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF1392AB).withValues(alpha: 0.1)),
+                        border: Border.all(
+                          color: const Color(0xFF1392AB).withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on, color: Color(0xFF003366)),
+                          const Icon(
+                            Icons.location_on,
+                            color: Color(0xFF003366),
+                          ),
                           const SizedBox(width: 15),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Shipping Address", 
-                                    style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF003366))),
+                                Text(
+                                  "Shipping Address",
+                                  style: GoogleFonts.openSans(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Color(0xFF003366),
+                                  ),
+                                ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  order['delivery_address'] ?? "Address not provided",
-                                  style: GoogleFonts.openSans(fontSize: 14, color: Colors.black87),
+                                  order['delivery_address'] ??
+                                      "Address not provided",
+                                  style: GoogleFonts.openSans(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ],
                             ),
@@ -230,7 +286,13 @@ class OrderDetailsPage extends StatelessWidget {
                     const SizedBox(height: 25),
 
                     // --- 4. Items List ---
-                    Text("Items Purchased", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      "Items Purchased",
+                      style: GoogleFonts.openSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 15),
 
                     ListView.builder(
@@ -252,7 +314,12 @@ class OrderDetailsPage extends StatelessWidget {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: item['image_url'] != null
-                                    ? Image.network(item['image_url'], width: 60, height: 60, fit: BoxFit.cover)
+                                    ? Image.network(
+                                        item['image_url'],
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                      )
                                     : const Icon(Icons.medication, size: 40),
                               ),
                               const SizedBox(width: 15),
@@ -260,15 +327,30 @@ class OrderDetailsPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item['name'] ?? "Unknown", 
-                                        style: GoogleFonts.openSans(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    Text("Qty: ${item['quantity'] ?? 1}", 
-                                        style: GoogleFonts.openSans(fontSize: 13, color: Colors.grey)),
+                                    Text(
+                                      item['name'] ?? "Unknown",
+                                      style: GoogleFonts.openSans(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Qty: ${item['quantity'] ?? 1}",
+                                      style: GoogleFonts.openSans(
+                                        fontSize: 13,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              Text("RM ${((item['price'] ?? 0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}", 
-                                  style: GoogleFonts.openSans(fontWeight: FontWeight.bold, color: const Color(0xFF1392AB))),
+                              Text(
+                                "RM ${((item['price'] ?? 0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}",
+                                style: GoogleFonts.openSans(
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1392AB),
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -283,22 +365,38 @@ class OrderDetailsPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFF003366).withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF003366).withValues(alpha: 0.1)),
+                        border: Border.all(
+                          color: const Color(0xFF003366).withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Column(
                         children: [
                           _buildPriceRow("Subtotal", calculatedSubtotal),
                           _buildPriceRow("Delivery Fee", deliveryFee),
                           if (order['voucher_code'] != null)
-                             _buildPriceRow("Voucher (${order['voucher_code']})", 0, isFree: true),
+                            _buildPriceRow(
+                              "Voucher (${order['voucher_code']})",
+                              0,
+                              isFree: true,
+                            ),
                           const Divider(height: 30),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("Grand Total", style: GoogleFonts.openSans(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(
+                                "Grand Total",
+                                style: GoogleFonts.openSans(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               Text(
                                 "RM ${grandTotal.toStringAsFixed(2)}",
-                                style: GoogleFonts.openSans(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1392AB)),
+                                style: GoogleFonts.openSans(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1392AB),
+                                ),
                               ),
                             ],
                           ),
@@ -324,8 +422,13 @@ class OrderDetailsPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: GoogleFonts.openSans(fontSize: 14)),
-          Text(isFree ? "Applied" : "RM ${amount.toStringAsFixed(2)}", 
-              style: GoogleFonts.openSans(fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(
+            isFree ? "Applied" : "RM ${amount.toStringAsFixed(2)}",
+            style: GoogleFonts.openSans(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
