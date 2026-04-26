@@ -20,7 +20,22 @@ class NotificationService {
     InitializationSettings(android: initializationSettingsAndroid);
 
     tz.initializeTimeZones();
+    // Set local timezone to Malaysia
+    try {
+      tz.setLocalLocation(tz.getLocation('Asia/Kuala_Lumpur'));
+    } catch (e) {
+      debugPrint("Timezone error: $e");
+    }
+
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> requestPermissions() async {
+    final androidImplementation = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      await androidImplementation.requestExactAlarmsPermission();
+    }
   }
 
   // Show immediate notification
@@ -49,8 +64,15 @@ class NotificationService {
       final DateFormat format = DateFormat.jm();
       final DateTime parsedTime = format.parse(timeStr);
       
-      final now = DateTime.now();
-      var scheduledDate = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        parsedTime.hour,
+        parsedTime.minute,
+      );
       
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
@@ -60,13 +82,14 @@ class NotificationService {
         id,
         "Medicine Reminder: $name",
         "It's time to take your $dose of $name.",
-        tz.TZDateTime.from(scheduledDate, tz.local),
+        scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'med_channel',
             'Medicine Alarms',
             importance: Importance.max,
             priority: Priority.high,
+            channelShowBadge: true,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -75,6 +98,7 @@ class NotificationService {
             ? DateTimeComponents.time 
             : DateTimeComponents.dayOfWeekAndTime,
       );
+      debugPrint("Scheduled $name at $scheduledDate");
     } catch (e) {
       debugPrint("Error scheduling notification: $e");
     }

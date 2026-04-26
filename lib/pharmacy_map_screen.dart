@@ -44,6 +44,17 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
     }
   }
 
+  String _getBranchImageUrl(String branchName) {
+    // Construct the public URL for the branch image from Supabase Storage
+    final String bucketUrl = "https://ilywlqeofnxhssnezpgw.supabase.co/storage/v1/object/public/pharmacyLocation/";
+    
+    if (branchName.contains("Setapak")) return "${bucketUrl}Setapak.png";
+    if (branchName.contains("Cheras")) return "${bucketUrl}Cheras.png";
+    
+    // Default placeholder if name doesn't match
+    return "https://via.placeholder.com/400x200?text=No+Image+Available";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,14 +129,18 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      _getBranchImageUrl(_selectedBranch!['name']),
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 60, height: 60, color: Colors.grey[200],
+                        child: const Icon(Icons.store, color: Color(0xFF1392AB)),
+                      ),
                     ),
-                    child: const Icon(Icons.store, color: Color(0xFF1392AB), size: 30),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
@@ -180,11 +195,18 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
             children: [
               Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 20),
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(15)),
-                child: const Icon(Icons.image, size: 80, color: Colors.grey),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.network(
+                  _getBranchImageUrl(branch['name']),
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200, width: double.infinity, color: Colors.grey[200],
+                    child: const Icon(Icons.image, size: 80, color: Colors.grey),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               Text(branch['name'], style: GoogleFonts.openSans(fontSize: 22, fontWeight: FontWeight.bold)),
