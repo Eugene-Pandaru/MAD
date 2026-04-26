@@ -49,7 +49,7 @@ class _PharmacistDetailsPageState extends State<PharmacistDetailsPage> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
+      initialDate: DateTime.now().add(const Duration(days: 0)), // Can select today
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
       builder: (context, child) {
@@ -72,6 +72,26 @@ class _PharmacistDetailsPageState extends State<PharmacistDetailsPage> {
       });
       _fetchTakenSlots(picked);
     }
+  }
+
+  // 🔍 Helper to check if a slot has already passed today
+  bool _isSlotPast(String slot) {
+    if (selectedDate == null) return false;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selDate = DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day);
+
+    // If selected date is in the future, no slots are past
+    if (selDate.isAfter(today)) return false;
+
+    // It's today. Parse the slot time (e.g. "09:00 AM")
+    int slotHour = int.parse(slot.split(':')[0]);
+    if (slot.contains("PM") && slotHour != 12) slotHour += 12;
+    if (slot.contains("AM") && slotHour == 12) slotHour = 0;
+
+    // Disable if the current hour has reached or passed the slot start time
+    return now.hour >= slotHour;
   }
 
   @override
@@ -217,25 +237,27 @@ class _PharmacistDetailsPageState extends State<PharmacistDetailsPage> {
                         itemBuilder: (context, index) {
                           String slot = allTimeSlots[index];
                           bool isTaken = takenSlots.contains(slot);
+                          bool isPast = _isSlotPast(slot); // 🔍 Check if slot is in the past
                           bool isSelected = selectedTimeSlot == slot;
+                          bool isDisabled = isTaken || isPast;
 
                           return GestureDetector(
-                            onTap: isTaken ? null : () => setState(() => selectedTimeSlot = slot),
+                            onTap: isDisabled ? null : () => setState(() => selectedTimeSlot = slot),
                             child: Container(
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isTaken
+                                color: isDisabled
                                     ? Colors.grey.shade200
                                     : (isSelected ? const Color(0xFF1392AB) : Colors.white),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isTaken ? Colors.transparent : const Color(0xFF1392AB),
+                                  color: isDisabled ? Colors.transparent : const Color(0xFF1392AB),
                                 ),
                               ),
                               child: Text(
-                                isTaken ? "Booked" : slot,
+                                isTaken ? "Booked" : (isPast ? "Unavailable" : slot),
                                 style: GoogleFonts.openSans(
-                                  color: isTaken ? Colors.grey : (isSelected ? Colors.white : const Color(0xFF1392AB)),
+                                  color: isDisabled ? Colors.grey : (isSelected ? Colors.white : const Color(0xFF1392AB)),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),

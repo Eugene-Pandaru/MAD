@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:geocoding/geocoding.dart' as geo;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mad/utility.dart'; // 👈 Added import
 
 class AddressPage extends StatefulWidget {
   const AddressPage({super.key});
@@ -40,7 +42,6 @@ class _AddressPageState extends State<AddressPage> {
   // --- THE GPS FUNCTION ---
   Future<void> _getCurrentLocation() async {
     setState(() => _isGettingLocation = true);
-    print("!!! DEBUG: Starting GPS Request...");
 
     try {
       // 1. Check Service
@@ -63,14 +64,9 @@ class _AddressPageState extends State<AddressPage> {
         }
       }
 
-      // 3. Get Location with a faster setting
-      // We use changeSettings to tell it we don't need "Military Grade" accuracy
+      // 3. Get Location
       await _location.changeSettings(accuracy: LocationAccuracy.balanced);
-
-      // We add a timeout so it doesn't hang forever
-      final data = await _location.getLocation().timeout(const Duration(seconds: 10));
-
-      print("!!! DEBUG: GPS Coordinates received: ${data.latitude}, ${data.longitude}");
+      final data = await _location.getLocation().timeout(const Duration(seconds: 20));
 
       if (data.latitude != null && data.longitude != null) {
         LatLng newPoint = LatLng(data.latitude!, data.longitude!);
@@ -87,25 +83,33 @@ class _AddressPageState extends State<AddressPage> {
         _getAddressFromLatLng(newPoint);
       }
     } catch (e) {
-      print("!!! DEBUG: GPS ERROR: $e");
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("GPS Error: $e")),
-      );
+      if (mounted) {
+        // 🛠️ Updated to use modern floating snackbar from Utils
+        Utils.snackbar(context, "GPS Error: $e", color: Colors.red);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Select Delivery Location"), backgroundColor: Colors.green),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text("Select Location", style: GoogleFonts.openSans(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFF1392AB),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Column(
         children: [
           // 1. MAP SECTION
           Expanded(
             flex: 3,
             child: FlutterMap(
-              mapController: _mapController, // LINK THE CONTROLLER
+              mapController: _mapController,
               options: MapOptions(
                 initialCenter: _currentPoint,
                 initialZoom: 15,
@@ -143,31 +147,39 @@ class _AddressPageState extends State<AddressPage> {
                 children: [
                   SizedBox(
                     width: double.infinity,
+                    height: 50,
                     child: ElevatedButton.icon(
                       onPressed: _isGettingLocation ? null : _getCurrentLocation,
                       icon: _isGettingLocation
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.gps_fixed),
-                      label: Text(_isGettingLocation ? "Searching GPS..." : "Use Current GPS Location"),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                          : const Icon(Icons.my_location),
+                      label: Text(_isGettingLocation ? "Locating..." : "Use Current Location", style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1392AB),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text("DELIVER TO:", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Text("SELECTED ADDRESS:", style: GoogleFonts.openSans(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
                   const SizedBox(height: 10),
                   Text(
                     _addressLabel,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    style: GoogleFonts.openSans(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 55,
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context, _addressLabel),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                      child: const Text("Confirm Address", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1392AB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                      child: Text("Select This Location", style: GoogleFonts.openSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

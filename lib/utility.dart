@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Utils {
   /// 👤 Logged-in User Data
@@ -17,13 +18,24 @@ class Utils {
     // ❌ Remove current snackbar
     messenger.clearSnackBars();
 
-    // ✅ Show only latest, use floating to prevent pushing UI
+    // ✅ Show only latest with Open Sans style and modern floating design
     messenger.showSnackBar(
       SnackBar(
-        content: Text(message), 
+        content: Text(
+          message,
+          style: GoogleFonts.openSans(
+            color: Colors.white, 
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
         backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(20),
+        behavior: SnackBarBehavior.floating, // 👈 Floating behavior
+        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20), // 👈 Space from bottom/left/right
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15), // 👈 Curved borders
+        ),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -50,7 +62,7 @@ class Utils {
   }) async {
     try {
       final supabase = Supabase.instance.client;
-      
+
       // Upload the file
       final String path = await supabase.storage.from(bucket).upload(
         fileName,
@@ -71,3 +83,4 @@ class Utils {
     }
   }
 }
+

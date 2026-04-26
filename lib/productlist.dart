@@ -5,10 +5,10 @@ import 'package:mad/utility.dart';
 import 'package:mad/cartmanager.dart';
 import 'package:mad/cart.dart';
 import 'package:mad/productdetails.dart';
-import 'package:mad/userprofile.dart';
+import 'package:mad/home.dart';
 import 'package:mad/orderhistory.dart';
 import 'package:mad/appointmenthistory.dart';
-import 'package:mad/home.dart';
+import 'package:mad/userprofile.dart';
 
 class ProductListPage extends StatefulWidget {
   const ProductListPage({super.key});
@@ -19,23 +19,67 @@ class ProductListPage extends StatefulWidget {
 
 class _ProductListPageState extends State<ProductListPage> {
   final supabase = Supabase.instance.client;
+  final ScrollController _scrollController = ScrollController();
+  
   String selectedCategory = "All";
-
   List<Map<String, dynamic>> allProducts = [];
-  bool isLoading = true;
+  bool isLoading = false;
+  
+  // Pagination State
+  int currentPage = 0;
+  final int pageSize = 20;
+  bool hasMore = true;
 
   @override
   void initState() {
     super.initState();
     fetchProducts();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> fetchProducts() async {
-    try {
-      final data = await supabase.from('products').select();
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (!isLoading && hasMore) {
+        fetchProducts();
+      }
+    }
+  }
+
+  Future<void> fetchProducts({bool reset = false}) async {
+    if (reset) {
       setState(() {
-        allProducts = List<Map<String, dynamic>>.from(data);
+        allProducts = [];
+        currentPage = 0;
+        hasMore = true;
+      });
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      var query = supabase.from('products').select();
+      
+      if (selectedCategory != "All") {
+        query = query.eq('category', selectedCategory);
+      }
+
+      final data = await query.range(currentPage * pageSize, (currentPage + 1) * pageSize - 1);
+      
+      final List<Map<String, dynamic>> fetchedProducts = List<Map<String, dynamic>>.from(data);
+
+      setState(() {
+        allProducts.addAll(fetchedProducts);
         isLoading = false;
+        currentPage++;
+        if (fetchedProducts.length < pageSize) {
+          hasMore = false;
+        }
       });
     } catch (e) {
       debugPrint("Error fetching products: $e");
@@ -43,60 +87,15 @@ class _ProductListPageState extends State<ProductListPage> {
     }
   }
 
-  void _showSuccessDialog(BuildContext context, String productName) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 80),
-              const SizedBox(height: 20),
-              Text(
-                "Successfully added into cart",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.openSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1392AB),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context); // Close Dialog
-                  },
-                  child: Text("OK", style: GoogleFonts.openSans(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              )
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    List<Map<String, dynamic>> displayedProducts = allProducts.where((item) {
-      return selectedCategory == "All" || item['category'] == selectedCategory;
-    }).toList();
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🟢 Header (Matching home.dart style)
+            // 🟢 Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Row(
@@ -117,7 +116,7 @@ class _ProductListPageState extends State<ProductListPage> {
               ),
             ),
 
-            // 🟢 Category Bar (Mint Green style from home.dart)
+            // 🟢 Category Bar
             SizedBox(
               height: 50,
               child: ListView(
@@ -142,8 +141,12 @@ class _ProductListPageState extends State<ProductListPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            onSelected: (val) =>
-                                setState(() => selectedCategory = cat),
+                            onSelected: (val) {
+                              if (val) {
+                                setState(() => selectedCategory = cat);
+                                fetchProducts(reset: true);
+                              }
+                            },
                           ),
                         ))
                     .toList(),
@@ -154,9 +157,9 @@ class _ProductListPageState extends State<ProductListPage> {
 
             // 🟢 Product Grid
             Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : displayedProducts.isEmpty
+              child: allProducts.isEmpty && isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF1392AB)))
+                  : allProducts.isEmpty
                       ? Center(
                           child: Text(
                             "No items found",
@@ -164,6 +167,7 @@ class _ProductListPageState extends State<ProductListPage> {
                           ),
                         )
                       : GridView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(15),
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
@@ -172,9 +176,14 @@ class _ProductListPageState extends State<ProductListPage> {
                             crossAxisSpacing: 15,
                             mainAxisSpacing: 15,
                           ),
-                          itemCount: displayedProducts.length,
+                          itemCount: allProducts.length + (hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final item = displayedProducts[index];
+                            if (index == allProducts.length) {
+                              return const Center(child: CircularProgressIndicator(color: Color(0xFF1392AB)));
+                            }
+
+                            final item = allProducts[index];
+                            double price = double.tryParse(item['price'].toString()) ?? 0.0;
                             return InkWell(
                               onTap: () {
                                 Navigator.push(
@@ -203,6 +212,7 @@ class _ProductListPageState extends State<ProductListPage> {
                                           child: Image.network(
                                             item['image_url'],
                                             fit: BoxFit.contain,
+                                            errorBuilder: (c, e, s) => const Icon(Icons.image, size: 50),
                                           ),
                                         ),
                                       ),
@@ -228,17 +238,22 @@ class _ProductListPageState extends State<ProductListPage> {
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                "RM ${item['price']}",
+                                                "RM ${price.toStringAsFixed(2)}",
                                                 style: GoogleFonts.openSans(
                                                   color: const Color(0xFF1392AB),
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                              // 🟢 "+" Button to add to cart
+                                              // 🟢 Updated "+" Button
                                               GestureDetector(
                                                 onTap: () {
                                                   CartManager.addToCart(item);
-                                                  _showSuccessDialog(context, item['name']);
+                                                  // ✅ FIXED: Using modern floating snackbar
+                                                  Utils.snackbar(
+                                                    context, 
+                                                    "Successfully added into cart",
+                                                      color: Colors.green // 👈 Changed to green
+                                                  );
                                                 },
                                                 child: Container(
                                                   padding: const EdgeInsets.all(5),
@@ -269,7 +284,7 @@ class _ProductListPageState extends State<ProductListPage> {
         ),
       ),
 
-      // 🟢 Floating Cart Button (Bottom Right)
+      // 🟢 Floating Cart Button
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
             context, MaterialPageRoute(builder: (context) => const CartPage())),
@@ -277,7 +292,7 @@ class _ProductListPageState extends State<ProductListPage> {
         child: const Icon(Icons.shopping_cart, color: Colors.white),
       ),
 
-      // 🟢 Bottom Navigation Bar (Matching home.dart)
+      // 🟢 Bottom Navigation Bar
       bottomNavigationBar: Container(
         height: 80,
         decoration: BoxDecoration(
