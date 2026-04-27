@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/footer.dart';
 
+
+///k
+
 class ChatBotPage extends StatefulWidget {
   const ChatBotPage({super.key});
 
@@ -26,6 +29,7 @@ class _ChatBotPageState extends State<ChatBotPage> {
     "hi": "Hello! Need help finding a medicine?",
     "price": "You can check all prices in our 'Product' section on the home screen.",
     "vitamin": "We have Vitamin C and Multivitamins in stock. Check the 'Vitamin' category!",
+    "help": "Try asking about 'fever', 'cough', 'delivery', 'location', or 'payment'!",
   };
 
   void _handleMessage(String text) {

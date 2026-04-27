@@ -43,8 +43,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
     if (userId == null) return;
 
     try {
-      // For a real production app, you'd have a 'logs' table.
-      // For this prototype, we'll calculate adherence based on the current 'reminders' state.
       final data = await supabase
           .from('reminders')
           .select()
@@ -196,16 +194,27 @@ class _HealthDashboardState extends State<HealthDashboard> {
         content: TextFormField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: "Hours exercised today"),
+          decoration: const InputDecoration(
+            labelText: "Hours exercised today",
+            hintText: "e.g. 1.5",
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
               final input = controller.text.trim();
+              if (input.isEmpty) {
+                Utils.snackbar(context, "Error: Please enter a value", color: Colors.red);
+                return;
+              }
               final hours = double.tryParse(input);
-              if (hours == null || hours <= 0 || hours > 24) {
-                Utils.snackbar(context, "Error: Enter valid hours (0-24)", color: Colors.red);
+              if (hours == null || hours <= 0) {
+                Utils.snackbar(context, "Error: Please enter a positive number", color: Colors.red);
+                return;
+              }
+              if (hours > 24) {
+                Utils.snackbar(context, "Error: Value seems too high for a day", color: Colors.red);
                 return;
               }
               _addExercise(hours);
@@ -243,13 +252,12 @@ class _HealthDashboardState extends State<HealthDashboard> {
                   children: [
                     _buildSectionHeaderWithFilter("Medicine Adherence", (val) {
                       setState(() => _adherenceFilter = val!);
-                      // In a real app, re-fetch data based on val
                     }),
                     const SizedBox(height: 15),
                     _buildAdherenceChart(),
                     const SizedBox(height: 20),
                     
-                    // Moved Medicine Schedule here
+                    // Medicine Schedule Button
                     _buildReminderActionCard(),
                     const SizedBox(height: 30),
                     
@@ -270,16 +278,20 @@ class _HealthDashboardState extends State<HealthDashboard> {
                     const SizedBox(height: 20),
                     
                     Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _showExerciseDialog,
-                        icon: const Icon(Icons.add_task),
-                        label: const Text("Daily Exercise Check-in"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1392AB),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                      child: Column(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _showExerciseDialog,
+                            icon: const Icon(Icons.add_task),
+                            label: const Text("Daily Exercise Check-in"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1392AB),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 30),

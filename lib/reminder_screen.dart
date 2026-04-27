@@ -325,6 +325,46 @@ class _ReminderScreenState extends State<ReminderScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // NEW: Manual Reminder Trigger Section for Demo
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2F1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF1392AB).withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "Demo: Manual Reminder Trigger",
+                          style: GoogleFonts.openSans(fontWeight: FontWeight.bold, color: const Color(0xFF00796B)),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            if (activeReminders.isNotEmpty) {
+                              final first = activeReminders.first;
+                              await NotificationService().showInstantMedicineReminder(
+                                name: first.medicineName,
+                                dose: first.dosage,
+                              );
+                            } else {
+                              Utils.snackbar(context, "No active medicines to demo with", color: Colors.orange);
+                            }
+                          },
+                          icon: const Icon(Icons.notifications_active, color: Colors.white),
+                          label: const Text("Send Test Notification", style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1392AB),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   if (missed.isNotEmpty) ...[
                     _buildSectionHeader("Missed", Colors.red),
                     ...missed.map((r) => _buildReminderTile(r, isMissed: true)),
