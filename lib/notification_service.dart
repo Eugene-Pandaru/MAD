@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mad/utility.dart';
 import 'reminder_model.dart';
+import 'reminder_screen.dart';
 
 class NotificationService extends ChangeNotifier {
   static final NotificationService _internal = NotificationService._();
@@ -19,8 +20,13 @@ class NotificationService extends ChangeNotifier {
   Timer? _checkTimer;
   Reminder? overdueReminder;
   bool _isChecking = false;
+  
+  // To handle navigation when notification is tapped
+  GlobalKey<NavigatorState>? navigatorKey;
 
-  Future<void> init() async {
+  Future<void> init({GlobalKey<NavigatorState>? navKey}) async {
+    navigatorKey = navKey;
+    
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     
@@ -38,17 +44,59 @@ class NotificationService extends ChangeNotifier {
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         debugPrint("Notification tapped: ${response.payload}");
+        // Navigate to schedule screen when tapped
+        if (navigatorKey != null && navigatorKey!.currentState != null) {
+          navigatorKey!.currentState!.push(
+            MaterialPageRoute(builder: (context) => const ReminderScreen()),
+          );
+        }
       },
     );
 
-    // Start a periodic check every 10 seconds for real-time responsiveness
+    // Periodic check for the pop-out UI and daily reset
     _checkTimer?.cancel();
     _checkTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      dailyResetReminders();
       checkOverdueReminders();
     });
     
-    // Initial check
+    dailyResetReminders();
     checkOverdueReminders();
+  }
+
+  Future<void> dailyResetReminders() async {
+    final user = Utils.currentUser;
+    if (user == null) return;
+    final userId = user['id'];
+
+    final supabase = Supabase.instance.client;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    try {
+      final profile = await supabase.from('users_profile').select('last_medicine_reset').eq('id', userId).maybeSingle();
+      
+      if (profile != null) {
+        String? lastReset = profile['last_medicine_reset'];
+        if (lastReset != today) {
+          await supabase.from('reminders').update({'is_taken': false}).eq('user_id', userId);
+          await supabase.from('users_profile').update({'last_medicine_reset': today}).eq('id', userId);
+        }
+      }
+    } catch (e) {
+      debugPrint("Daily Reset Error: $e");
+    }
+  }
+
+  DateTime? _parseTime(String timeStr) {
+    try {
+      return DateFormat.jm().parse(timeStr.trim());
+    } catch (e) {
+      try {
+        return DateFormat.Hm().parse(timeStr.trim());
+      } catch (e2) {
+        return null;
+      }
+    }
   }
 
   Future<void> checkOverdueReminders() async {
@@ -67,29 +115,22 @@ class NotificationService extends ChangeNotifier {
           .from('reminders')
           .select()
           .eq('user_id', userId)
-          .eq('is_taken', false);
+          .eq('is_taken', false)
+          .eq('is_archived', false);
 
       if (data != null) {
         final List<Reminder> reminders = (data as List).map((json) => Reminder.fromJson(json)).toList();
         final now = DateTime.now();
-        final DateFormat format = DateFormat.jm();
 
         Reminder? found;
         for (var r in reminders) {
-          try {
-            // Clean the time string just in case
-            String timeStr = r.time.trim();
-            final DateTime parsedTime = format.parse(timeStr);
+          final parsedTime = _parseTime(r.time);
+          if (parsedTime != null) {
             final scheduledTimeToday = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
-            
-            // Check if it's past due today
             if (now.isAfter(scheduledTimeToday)) {
                found = r;
-               debugPrint("DUE NOW: ${r.medicineName} at ${r.time}");
                break;
             }
-          } catch (e) {
-            debugPrint("Time parse error for ${r.medicineName}: $e");
           }
         }
 
@@ -99,7 +140,7 @@ class NotificationService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint("Global reminder check error: $e");
+      debugPrint("Reminder check error: $e");
     } finally {
       _isChecking = false;
     }
@@ -118,59 +159,68 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> showNotification(int id, String title, String body, {String? payload}) async {
+  Future<void> showNotification(int id, String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'med_channel_generic',
+      'General Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(id, title, body, platformChannelSpecifics);
+  }
+
+  Future<void> showInstantMedicineReminder({required String name, required String dose}) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'med_channel_instant',
+      'Instant Medicine Reminders',
+      channelDescription: 'Manual test notifications for medicine',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
     await flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'med_channel', 
-          'Medicine Alarms',
-          channelDescription: 'Channel for Medicine Reminders',
-          importance: Importance.max, 
-          priority: Priority.high,
-          playSound: true,
-          fullScreenIntent: true,
-        ),
-      ),
-      payload: payload,
+      999, // Unique ID for test notification
+      'Medicine Reminder: $name',
+      "It's time to take your $dose of $name.",
+      platformChannelSpecifics,
     );
   }
 
   Future<void> scheduleMedicineReminder(int id, String name, String dose, String timeStr, String frequency) async {
     try {
-      final DateFormat format = DateFormat.jm();
-      final DateTime parsedTime = format.parse(timeStr);
+      final parsedTime = _parseTime(timeStr);
+      if (parsedTime == null) return;
       
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduledDate = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        parsedTime.hour,
-        parsedTime.minute,
-      );
+      final now = DateTime.now();
+      var scheduledDateTime = DateTime(now.year, now.month, now.day, parsedTime.hour, parsedTime.minute);
       
-      if (scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      if (scheduledDateTime.isBefore(now)) {
+        scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
       }
 
       await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
         "Medicine Reminder: $name",
         "It's time to take your $dose of $name.",
-        scheduledDate,
+        tz.TZDateTime.from(scheduledDateTime, tz.local),
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'med_channel_exact',
             'Medicine Exact Alarms',
+            channelDescription: 'Scheduled medicine notifications',
             importance: Importance.max,
             priority: Priority.high,
             playSound: true,
             category: AndroidNotificationCategory.alarm,
-            visibility: NotificationVisibility.public,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

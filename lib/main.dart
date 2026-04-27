@@ -7,12 +7,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mad/reminder_screen.dart';
 import 'package:mad/utility.dart';
 
+// 1. Create a global navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Notifications singleton
   final notificationService = NotificationService();
-  await notificationService.init();
+  // 2. Pass the navigatorKey to the init method
+  await notificationService.init(navKey: navigatorKey);
+  
+  // Request permissions for notifications
+  await notificationService.requestPermissions();
 
   // Initialize Stripe
   Stripe.publishableKey = "pk_test_51TMTra30pXzuvOG7tMZOeoJVE9VWX2kSVS1wChjsAsQoJ4yPN8E6m15slIEQb2XwS0Z0efa88HP6cNk3q0Aqc3Td00Bxa7xhwE";
@@ -32,6 +39,8 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // 3. Set the navigatorKey in MaterialApp
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         textTheme: GoogleFonts.openSansTextTheme(),
@@ -90,10 +99,17 @@ class GlobalReminderOverlay extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF1392AB), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.medication, color: Color(0xFF1392AB), size: 28),
+                    const Icon(Icons.notification_important, color: Color(0xFF1392AB), size: 28),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
